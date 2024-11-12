@@ -9,8 +9,8 @@
 DFRobot_VL53L0X ToFSensor;
 Servo myservo;
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
-Adafruit_DCMotor *leftMotor = AFMS.getMotor(1); // left Motor on port M1
-Adafruit_DCMotor *RightMotor = AFMS.getMotor(3); // right Motor on port M2
+Adafruit_DCMotor *leftMotor = AFMS.getMotor(3); // left Motor on port M1
+Adafruit_DCMotor *rightMotor = AFMS.getMotor(1); // right Motor on port M2
 Adafruit_DCMotor *exMotor = AFMS.getMotor(2); // extra 18RPM motor
 
 int RLEDPin = 11; // the output pin for the Red LED
@@ -24,9 +24,9 @@ int FrontLineSensorPin = 9;
 int MagneticPin = 2; // the input pin for the magenetic sensor
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
-int edges[12][4] = {{-1,-1,-1,1},{2,0,3,-1},{-1,-1,1,6},{1,-1,-1,4},{5,3,-1,7},{6,-1,4,11},{-1,2,5,9},{8,4,-1,-1},{10,11,7,-1},{-1,6,10,-1},{9,-1,8,-1},{-1,5,-1,8}};
+int edges[12][4] = {{-1,-1,-1,1},{-1,2,0,3},{6,-1,-1,1},{4,1,-1,-1},{7,5,3,-1},{11,6,-1,4},{9,-1,2,5},{-1,8,4,-1},{-1,10,11,7},{-1,-1,6,10},{-1,9,-1,8},{8,-1,5,-1}};
 //                   0            1          2           3           4         5           6          7           8             9             10          11
-int distance[12][4] = {{-1,-1,-1,20},{100,20,100,-1},{-1,-1,100,80},{100,-1,-1,80},{100,80,-1,80},{100,-1,100,40},{-1,80,100,80},{100,80,-1,-1},{40,40,100,-1},{-1,80,60,-1},{60,-1,40,-1},{-1,40,-1,40}};
+int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,-1,100},{80,100,-1,-1},{80,100,80,-1},{40,100,-1,100},{80,-1,80,100},{-1,100,80,-1},{-1,40,40,100},{-1,-1,80,60},{-1,60,-1,40},{40,-1,40,-1}};
 //                       0             1               2               3            4              5               6              7              8              9             10             11
 bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
@@ -43,6 +43,7 @@ int targetNode = 8;
 int nextNode = 1;
 
 int state = 0;
+int direction = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -132,7 +133,9 @@ void loop(){
       BoxLoaded = num%2;
       Serial.println(num);
       state = 0;inputBytePointer=0;
-      Serial.println(PathFinding(currNode,targetNode));
+      int next = PathFinding(currNode,targetNode)
+      Serial.println(next);
+      moveToNode(next,0);
       break;
     default:
       break;
@@ -141,7 +144,7 @@ void loop(){
   
   
   
-  //move();
+  
 }
 
 int PathFinding(int curr, int des){
@@ -164,7 +167,7 @@ int PathFinding(int curr, int des){
       index = intIndexInArray(i,curr);
       if(!nodeTraveled[i]){
         if(index!=-1){
-          if(disFromCurr[i]>disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[index][0]))){
+          if(disFromCurr[i]>disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){
             disFromCurr[i]=disFromCurr[curr]+edges[curr][index];
             predecessor[i]=curr;
           }
@@ -193,4 +196,20 @@ int intIndexInArray(int goal, int curr){
     if(goal == edges[curr][i])return i;
   }
   return -1;
+}
+
+void moveToNode(int node, bool back){
+  leftMotor->setSpeed(255);
+  rightMotor->setSpeed(255);
+  int tAngle = (direction+ back?2:0)%4;
+  while(FrontLineRead != (edges[node][(0+tAngle)%4] != -1) || LeftLineRead != (edges[node][(3+tAngle)%4] != -1) || RightLineRead != (edges[node][(1+tAngle)%4] != -1)){
+    leftMotor->run(back?BACKWARD:FORWARD);
+    rightMotor->run(back?BACKWARD:FORWARD);
+  }
+  leftMotor->run(RELEASE);
+  rightMotor->run(RELEASE);
+  currNode = node;
+}
+void turn(int angle){
+  
 }
