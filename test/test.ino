@@ -158,18 +158,16 @@ int PathFinding(int curr, int des){
   int index = -1;
   while(curr!=des){
     Serial.println(curr);
+    nodeTraveled[curr]=1;
     minD = 1e9;
     for(int i=0;i<12;i++){
-      if(!nodeTraveled[i] && intInArray(i,edges[curr])){
-        Serial.print(i);
-        Serial.println(" Not travelled");
-        index = intIndexInArray(i,edges[curr]);
-        if(disFromCurr[i]<disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[index][0]))){
-          disFromCurr[i]=disFromCurr[curr]+edges[curr][index];
-          Serial.print(i);
-          Serial.print(" dis updated to ");
-          Serial.println(disFromCurr[i]);
-          predecessor[i]=curr;
+      index = intIndexInArray(i,curr);
+      if(!nodeTraveled[i]){
+        if(index!=-1){
+          if(disFromCurr[i]>disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[index][0]))){
+            disFromCurr[i]=disFromCurr[curr]+edges[curr][index];
+            predecessor[i]=curr;
+          }
         }
         if(disFromCurr[i]<minD){
           minD=disFromCurr[i];
@@ -180,6 +178,7 @@ int PathFinding(int curr, int des){
     curr = nextCurr;
   }
   while(predecessor[curr]!=initCurr){
+    Serial.print("->");
     Serial.println(predecessor[curr]);
     curr = predecessor[curr];
   }
@@ -188,16 +187,10 @@ int PathFinding(int curr, int des){
   return curr;
 }
 
-bool intInArray(int goal, int array[]){
-  for(int i=0;i<(sizeof(array) / sizeof(array[0]));i++){
-    if(goal == array[i])return 1;
-  }
-  return 0;
-}
 
-int intIndexInArray(int goal, int array[]){
-  for(int i=0;i<(sizeof(array) / sizeof(array[0]));i++){
-    if(goal == array[i])return i;
+int intIndexInArray(int goal, int curr){
+  for(int i=0;i<4;i++){
+    if(goal == edges[curr][i])return i;
   }
   return -1;
 }
