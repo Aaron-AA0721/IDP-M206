@@ -125,10 +125,10 @@ void loop(){
       rightMotor->setSpeed((back^RightBoundaryRead)?200:255);
       leftMotor->run(back?FORWARD:BACKWARD);
       rightMotor->run(back?BACKWARD:FORWARD);
-      if(FrontLineRead == (edges[node][(0+tAngle)%4] != -1) && LeftLineRead == (edges[node][(3+tAngle)%4] != -1) && RightLineRead == (edges[node][(1+tAngle)%4] != -1)){
+      if(FrontLineRead == (edges[targetNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[targetNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[targetNode][(1+tAngle)%4] != -1)){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
-        currNode = node;
+        currNode = targetNode;
         state = 1;
       }
       if(BoxSensed){
@@ -138,10 +138,26 @@ void loop(){
       }
       break;
     case 1://rotating
+      tAngle = IndexInArray(targetNode,curr)%4
+      leftMotor->setSpeed(255);
+      rightMotor->setSpeed(255);
+      leftMotor->run((tAngle-direction)>0?FORWARD:BACKWARD);
+      rightMotor->run((tAngle-direction)>0?FORWARD:BACKWARD);
+      if(FrontLineRead == (edges[currNode][(0+tAngle)%4] == -1) || 
+        LeftLineRead == (edges[currNode][(3+tAngle)%4] == -1) || 
+        RightLineRead == (edges[currNode][(1+tAngle)%4] == -1) ||
+        LeftBoundaryRead == 0 ||
+        RightBoundaryRead == 0){//stops rotating
+
+      }
       break;
     case 2://picking
+      //do something
+
       break;
     case 3://dropping
+      //do something
+      //targetNode = search for closest waste
       break;
   }
   /*if(inputBytes[inputBytePointer-1]==10){
@@ -240,7 +256,7 @@ int intIndexInArray(int goal, int curr){
   }
   return -1;
 }
-
+/*
 void moveToNode(int node, bool back){
   leftMotor->setSpeed(255);
   rightMotor->setSpeed(255);
@@ -280,4 +296,4 @@ void turn(int angle){
   leftMotor->run(RELEASE);
   rightMotor->run(RELEASE);
   direction = tAngle;
-}
+}*/
