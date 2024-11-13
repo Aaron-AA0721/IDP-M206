@@ -9,8 +9,8 @@
 DFRobot_VL53L0X ToFSensor;
 Servo myservo;
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
-Adafruit_DCMotor *leftMotor = AFMS.getMotor(3); // left Motor on port M1
-Adafruit_DCMotor *rightMotor = AFMS.getMotor(1); // right Motor on port M2
+Adafruit_DCMotor *leftMotor = AFMS.getMotor(1); // left Motor on port M1
+Adafruit_DCMotor *rightMotor = AFMS.getMotor(3); // right Motor on port M2
 Adafruit_DCMotor *exMotor = AFMS.getMotor(2); // extra 18RPM motor
 
 int RLEDPin = 11; // the output pin for the Red LED
@@ -20,6 +20,8 @@ int ServoPin = 10; // the pin for servo
 int LeftLineSensorPin = 7; //the pin for three line followers
 int RightLineSensorPin = 8; 
 int FrontLineSensorPin = 9;
+int LeftLineBoundaryPin = 6;
+int RightLineBoundaryPin = 5;
 
 int MagneticPin = 2; // the input pin for the magenetic sensor
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
@@ -44,10 +46,12 @@ int nextNode = 1;
 
 int state = 0;
 int direction = 0;
+bool back = 0;
 
 void setup() {
   Serial.begin(9600);
-
+  currNode = 0;
+  targetNode = 7;
   Wire.begin();
   ToFSensor.begin(0x50);
   ToFSensor.setMode(ToFSensor.eContinuous,ToFSensor.eHigh);
@@ -60,7 +64,8 @@ void setup() {
   pinMode(LeftLineSensorPin, INPUT);
   pinMode(RightLineSensorPin, INPUT);
   pinMode(FrontLineSensorPin, INPUT);
-
+  pinMode(LeftLineBoundaryPin, INPUT);
+  pinMode(RightLineBoundaryPin, INPUT);
   myservo.attach(ServoPin);
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
     if (!AFMS.begin(1000)) {  // OR with a different frequency, say 1KHz
@@ -71,7 +76,7 @@ void setup() {
 }
 float UltraRead,UltraDistance;
 float ToFDistance;
-int LeftLineRead,RightLineRead,FrontLineRead;
+int LeftLineRead,RightLineRead,FrontLineRead,LeftBoundaryRead,RightBoundaryRead;
 int MagRead = 0; // variable for reading the pin status
 
 int inputBytes[10];
@@ -88,9 +93,17 @@ void loop(){
   LeftLineRead =  digitalRead(LeftLineSensorPin);
   RightLineRead =  digitalRead(RightLineSensorPin);
   FrontLineRead =  digitalRead(FrontLineSensorPin);
+  //Serial.print("Front: ");
+  //Serial.println(FrontLineRead);
+  //Serial.print("Left: ");
+  //Serial.println(LeftLineRead);
+  //Serial.print("Right: ");
+  //Serial.println(RightLineRead);
+  LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+  RightBoundaryRead = digitalRead(RightLineBoundaryPin);
   digitalWrite(RLEDPin,HIGH);
   //Serial.println(FrontLineRead);
-  delay(1000);
+  delay(500);
   if (Serial.available() > 0)
     {
     // read the incoming byte:
@@ -103,9 +116,38 @@ void loop(){
       Serial.print("I received: ");
       Serial.println(incomingByte, DEC);}
     }
-  if(inputBytes[inputBytePointer-1]==10){
+  int next = PathFinding(currNode,targetNode);
+  int tAngle;
+  switch(state){
+    case 0://moving
+      tAngle = (direction+ back?2:0)%4;
+      leftMotor->setSpeed((back^LeftBoundaryRead)?200:255);
+      rightMotor->setSpeed((back^RightBoundaryRead)?200:255);
+      leftMotor->run(back?FORWARD:BACKWARD);
+      rightMotor->run(back?BACKWARD:FORWARD);
+      if(FrontLineRead == (edges[node][(0+tAngle)%4] != -1) && LeftLineRead == (edges[node][(3+tAngle)%4] != -1) && RightLineRead == (edges[node][(1+tAngle)%4] != -1)){
+        leftMotor->run(RELEASE);
+        rightMotor->run(RELEASE);
+        currNode = node;
+        state = 1;
+      }
+      if(BoxSensed){
+        leftMotor->run(RELEASE);
+        rightMotor->run(RELEASE);
+        state = 2;
+      }
+      break;
+    case 1://rotating
+      break;
+    case 2://picking
+      break;
+    case 3://dropping
+      break;
+  }
+  /*if(inputBytes[inputBytePointer-1]==10){
     int num = 0;
     inputBytePointer-=2;
+    
     switch(state){
     case 0:
       Serial.print("Inputing for curr: ");
@@ -133,14 +175,15 @@ void loop(){
       BoxLoaded = num%2;
       Serial.println(num);
       state = 0;inputBytePointer=0;
-      int next = PathFinding(currNode,targetNode)
+      int next = PathFinding(currNode,targetNode);
       Serial.println(next);
       moveToNode(next,0);
+      turn(1);
       break;
     default:
       break;
   }
-  }
+  }*/
   
   
   
@@ -203,13 +246,38 @@ void moveToNode(int node, bool back){
   rightMotor->setSpeed(255);
   int tAngle = (direction+ back?2:0)%4;
   while(FrontLineRead != (edges[node][(0+tAngle)%4] != -1) || LeftLineRead != (edges[node][(3+tAngle)%4] != -1) || RightLineRead != (edges[node][(1+tAngle)%4] != -1)){
-    leftMotor->run(back?BACKWARD:FORWARD);
+    leftMotor->run(back?FORWARD:BACKWARD);
     rightMotor->run(back?BACKWARD:FORWARD);
+    LeftLineRead =  digitalRead(LeftLineSensorPin);
+    RightLineRead =  digitalRead(RightLineSensorPin);
+    FrontLineRead =  digitalRead(FrontLineSensorPin);
+    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
   }
   leftMotor->run(RELEASE);
   rightMotor->run(RELEASE);
   currNode = node;
 }
 void turn(int angle){
-  
+  leftMotor->setSpeed(255);
+  rightMotor->setSpeed(255);
+  int tAngle = (direction + angle + 4)%4;
+  bool back = angle>0;
+  while(FrontLineRead != (edges[currNode][(0+tAngle)%4] != -1) || 
+  LeftLineRead != (edges[currNode][(3+tAngle)%4] != -1) || 
+  RightLineRead != (edges[currNode][(1+tAngle)%4] != -1) ||
+  LeftBoundaryRead == 1 ||
+  RightBoundaryRead == 1
+  ){
+    leftMotor->run(back?BACKWARD:FORWARD);
+    rightMotor->run(back?BACKWARD:FORWARD);
+    LeftLineRead =  digitalRead(LeftLineSensorPin);
+    RightLineRead =  digitalRead(RightLineSensorPin);
+    FrontLineRead =  digitalRead(FrontLineSensorPin);
+    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+  }
+  leftMotor->run(RELEASE);
+  rightMotor->run(RELEASE);
+  direction = tAngle;
 }
