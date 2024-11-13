@@ -26,7 +26,7 @@ int RightLineBoundaryPin = 5;
 int MagneticPin = 2; // the input pin for the magenetic sensor
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
-int edges[12][4] = {{-1,-1,-1,1},{-1,2,0,3},{6,-1,-1,1},{4,1,-1,-1},{7,5,3,-1},{11,6,-1,4},{9,-1,2,5},{-1,8,4,-1},{-1,10,11,7},{-1,-1,6,10},{-1,9,-1,8},{8,-1,5,-1}};
+int edges[12][4] = {{1,-1,-1,-1},{-1,2,0,3},{6,-1,-1,1},{4,1,-1,-1},{7,5,3,-1},{11,6,-1,4},{9,-1,2,5},{-1,8,4,-1},{-1,10,11,7},{-1,-1,6,10},{-1,9,-1,8},{8,-1,5,-1}};
 //                   0            1          2           3           4         5           6          7           8             9             10          11
 int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,-1,100},{80,100,-1,-1},{80,100,80,-1},{40,100,-1,100},{80,-1,80,100},{-1,100,80,-1},{-1,40,40,100},{-1,-1,80,60},{-1,60,-1,40},{40,-1,40,-1}};
 //                       0             1               2               3            4              5               6              7              8              9             10             11
@@ -51,7 +51,8 @@ bool back = 0;
 void setup() {
   Serial.begin(9600);
   currNode = 0;
-  targetNode = 7;
+  targetNode = 8;
+
   Wire.begin();
   ToFSensor.begin(0x50);
   ToFSensor.setMode(ToFSensor.eContinuous,ToFSensor.eHigh);
@@ -66,6 +67,7 @@ void setup() {
   pinMode(FrontLineSensorPin, INPUT);
   pinMode(LeftLineBoundaryPin, INPUT);
   pinMode(RightLineBoundaryPin, INPUT);
+
   myservo.attach(ServoPin);
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
     if (!AFMS.begin(1000)) {  // OR with a different frequency, say 1KHz
@@ -101,7 +103,7 @@ void loop(){
   //Serial.println(RightLineRead);
   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
   RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-  digitalWrite(RLEDPin,HIGH);
+  //digitalWrite(RLEDPin,HIGH);
   //Serial.println(FrontLineRead);
   delay(500);
   if (Serial.available() > 0)
@@ -116,7 +118,7 @@ void loop(){
       Serial.print("I received: ");
       Serial.println(incomingByte, DEC);}
     }
-  int next = PathFinding(currNode,targetNode);
+  int next = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
   int tAngle;
   switch(state){
     case 0://moving
@@ -125,10 +127,10 @@ void loop(){
       rightMotor->setSpeed((back^RightBoundaryRead)?200:255);
       leftMotor->run(back?FORWARD:BACKWARD);
       rightMotor->run(back?BACKWARD:FORWARD);
-      if(FrontLineRead == (edges[targetNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[targetNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[targetNode][(1+tAngle)%4] != -1)){
+      if(FrontLineRead == (edges[next][(0+tAngle)%4] != -1) && LeftLineRead == (edges[next][(3+tAngle)%4] != -1) && RightLineRead == (edges[next][(1+tAngle)%4] != -1)){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
-        currNode = targetNode;
+        currNode = next;
         state = 1;
       }
       if(BoxSensed){
@@ -153,7 +155,7 @@ void loop(){
       break;
     case 2://picking
       //do something
-
+      //update target node
       break;
     case 3://dropping
       //do something
