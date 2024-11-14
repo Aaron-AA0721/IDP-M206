@@ -48,6 +48,55 @@ int state = 0;
 int direction = 0;
 bool back = 0;
 
+int PathFinding(int curr, int des){
+  for(int i=0;i<12;i++){
+    nodeTraveled[i]=0;
+    disFromCurr[i]=1e9;
+    predecessor[i]=curr;
+  }
+  nodeTraveled[curr]=1;
+  disFromCurr[curr]=0;
+  int initCurr = curr;
+  int minD = 1e9;
+  int nextCurr = curr;
+  int index = -1;
+  while(curr!=des){
+    Serial.println(curr);
+    nodeTraveled[curr]=1;
+    minD = 1e9;
+    for(int i=0;i<12;i++){
+      index = IndexInArray(i,curr);
+      if(!nodeTraveled[i]){
+        if(index!=-1){
+          if(disFromCurr[i]>disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){
+            disFromCurr[i]=disFromCurr[curr]+edges[curr][index];
+            predecessor[i]=curr;
+          }
+        }
+        if(disFromCurr[i]<minD){
+          minD=disFromCurr[i];
+          nextCurr = i;
+        }
+      }
+    }
+    curr = nextCurr;
+  }
+  while(predecessor[curr]!=initCurr){
+    Serial.print("->");
+    Serial.println(predecessor[curr]);
+    curr = predecessor[curr];
+  }
+  Serial.println("Found next");
+  Serial.println(curr);
+  return curr;
+}
+int IndexInArray(int goal, int curr){
+  for(int i=0;i<4;i++){
+    if(goal == edges[curr][i])return i;
+  }
+  return -1;
+}
+
 void setup() {
   Serial.begin(9600);
   currNode = 0;
@@ -69,6 +118,7 @@ void setup() {
   pinMode(RightLineBoundaryPin, INPUT);
 
   myservo.attach(ServoPin);
+
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
     if (!AFMS.begin(1000)) {  // OR with a different frequency, say 1KHz
     Serial.println("Could not find Motor Shield. Check wiring.");
@@ -84,6 +134,8 @@ int MagRead = 0; // variable for reading the pin status
 int inputBytes[10];
 int inputBytePointer = 0;
 bool reach = 0;
+
+
 void loop(){
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
@@ -144,8 +196,6 @@ void loop(){
         currNode = next;
         state = 1;
         }
-        
-      }
       if(BoxSensed){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
@@ -153,7 +203,7 @@ void loop(){
       }
       break;
     case 1://rotating
-      tAngle = IndexInArray(targetNode,curr)%4
+      tAngle = IndexInArray(targetNode,currNode)%4;
       leftMotor->setSpeed(255);
       rightMotor->setSpeed(255);
       leftMotor->run((tAngle-direction)>0?FORWARD:RELEASE);
@@ -217,62 +267,12 @@ void loop(){
       break;
   }
   }*/
-  
-  
-  
-  
-}
 
-int PathFinding(int curr, int des){
-  for(int i=0;i<12;i++){
-    nodeTraveled[i]=0;
-    disFromCurr[i]=1e9;
-    predecessor[i]=curr;
-  }
-  nodeTraveled[curr]=1;
-  disFromCurr[curr]=0;
-  int initCurr = curr;
-  int minD = 1e9;
-  int nextCurr = curr;
-  int index = -1;
-  while(curr!=des){
-    Serial.println(curr);
-    nodeTraveled[curr]=1;
-    minD = 1e9;
-    for(int i=0;i<12;i++){
-      index = intIndexInArray(i,curr);
-      if(!nodeTraveled[i]){
-        if(index!=-1){
-          if(disFromCurr[i]>disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){
-            disFromCurr[i]=disFromCurr[curr]+edges[curr][index];
-            predecessor[i]=curr;
-          }
-        }
-        if(disFromCurr[i]<minD){
-          minD=disFromCurr[i];
-          nextCurr = i;
-        }
-      }
-    }
-    curr = nextCurr;
-  }
-  while(predecessor[curr]!=initCurr){
-    Serial.print("->");
-    Serial.println(predecessor[curr]);
-    curr = predecessor[curr];
-  }
-  Serial.println("Found next");
-  Serial.println(curr);
-  return curr;
 }
 
 
-int intIndexInArray(int goal, int curr){
-  for(int i=0;i<4;i++){
-    if(goal == edges[curr][i])return i;
-  }
-  return -1;
-}
+
+
 /*
 void moveToNode(int node, bool back){
   leftMotor->setSpeed(255);
