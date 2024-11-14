@@ -7,7 +7,8 @@
 #define MAX_RANG (520)
 #define ADC_SOLUTION (1023.0)
 DFRobot_VL53L0X ToFSensor;
-Servo myservo;
+Servo myservo1; // grabber
+Servo myservo2; // lifter
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 Adafruit_DCMotor *leftMotor = AFMS.getMotor(1); // left Motor on port M1
 Adafruit_DCMotor *rightMotor = AFMS.getMotor(3); // right Motor on port M2
@@ -16,7 +17,8 @@ Adafruit_DCMotor *exMotor = AFMS.getMotor(2); // extra 18RPM motor
 int RLEDPin = 11; // the output pin for the Red LED
 int GLEDPin = 12; // the output pin for the Green LED
 int BLEDPin = 13; // the output pin for the Blue LED
-int ServoPin = 10; // the pin for servo
+int ServoPin1 = 10; // the pin for the servos
+int ServoPin2 = 4; 
 int LeftLineSensorPin = 7; //the pin for three line followers
 int RightLineSensorPin = 8; 
 int FrontLineSensorPin = 9;
@@ -117,7 +119,8 @@ void setup() {
   pinMode(LeftLineBoundaryPin, INPUT);
   pinMode(RightLineBoundaryPin, INPUT);
 
-  myservo.attach(ServoPin);
+  myservo1.attach(ServoPin1);
+  myservo2.attach(ServoPin2)
 
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
     if (!AFMS.begin(1000)) {  // OR with a different frequency, say 1KHz
