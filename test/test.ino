@@ -83,7 +83,7 @@ int MagRead = 0; // variable for reading the pin status
 
 int inputBytes[10];
 int inputBytePointer = 0;
-
+bool reach = 0;
 void loop(){
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
@@ -127,11 +127,24 @@ void loop(){
       rightMotor->setSpeed((back^RightBoundaryRead)?200:255);
       leftMotor->run(back?FORWARD:BACKWARD);
       rightMotor->run(back?BACKWARD:FORWARD);
-      if(FrontLineRead == (edges[next][(0+tAngle)%4] != -1) && LeftLineRead == (edges[next][(3+tAngle)%4] != -1) && RightLineRead == (edges[next][(1+tAngle)%4] != -1)){
+      // if((FrontLineRead == (edges[next][(0+tAngle)%4] != -1) && LeftLineRead == (edges[next][(3+tAngle)%4] != -1) && RightLineRead == (edges[next][(1+tAngle)%4] != -1) ) || reach){
+      //   reach = 1;
+      //   if(LeftBoundaryRead && RightBoundaryRead){
+      //     leftMotor->run(RELEASE);
+      //     rightMotor->run(RELEASE);
+      //     currNode = next;
+      //     state = 1;
+      //     reach = 0;
+      //   }
+        
+      // }
+      if((FrontLineRead == (edges[next][(0+tAngle)%4] != -1) && LeftLineRead == (edges[next][(3+tAngle)%4] != -1) && RightLineRead == (edges[next][(1+tAngle)%4] != -1) )){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
         currNode = next;
         state = 1;
+        }
+        
       }
       if(BoxSensed){
         leftMotor->run(RELEASE);
@@ -143,14 +156,16 @@ void loop(){
       tAngle = IndexInArray(targetNode,curr)%4
       leftMotor->setSpeed(255);
       rightMotor->setSpeed(255);
-      leftMotor->run((tAngle-direction)>0?FORWARD:BACKWARD);
-      rightMotor->run((tAngle-direction)>0?FORWARD:BACKWARD);
-      if(FrontLineRead == (edges[currNode][(0+tAngle)%4] == -1) || 
-        LeftLineRead == (edges[currNode][(3+tAngle)%4] == -1) || 
-        RightLineRead == (edges[currNode][(1+tAngle)%4] == -1) ||
-        LeftBoundaryRead == 0 ||
-        RightBoundaryRead == 0){//stops rotating
-
+      leftMotor->run((tAngle-direction)>0?FORWARD:RELEASE);
+      rightMotor->run((tAngle-direction)>0?RELEASE:BACKWARD);
+      if(!FrontLineRead)reach = 1;
+      if(reach){
+        if(FrontLineRead && !LeftBoundaryRead && !RightBoundaryRead){//stops rotating
+          leftMotor->run(RELEASE);
+          rightMotor->run(RELEASE);
+          direction = tAngle;
+          state = 1;
+        }
       }
       break;
     case 2://picking
