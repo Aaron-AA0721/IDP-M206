@@ -35,6 +35,8 @@ int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,99
 //                       0             1               2               3            4              5               6              7              8              9             10             11
 bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
+int testNodeSeq[5] = {10,5,11,6,11};
+int TarP = 0;
 
 bool nodeTraveled[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 int disFromCurr [12] = {0,0,0,0,0,0,0,0,0,0,0,0};
@@ -111,7 +113,7 @@ void PickBox(){
 void setup() {
   Serial.begin(9600);
   currNode = 0;
-  targetNode = 9;
+  targetNode = testNodeSeq[TarP];
 
   Wire.begin();
   ToFSensor.begin(0x50);
@@ -130,7 +132,7 @@ void setup() {
   pinMode(RightLineBoundaryPin, INPUT);
 
   myservo1.attach(ServoPin1);
-  myservo2.attach(ServoPin2)
+  myservo2.attach(ServoPin2);
 
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
     if (!AFMS.begin(1000)) {  // OR with a different frequency, say 1KHz
@@ -239,7 +241,14 @@ void loop(){
         Serial.print(", angle: ");
         Serial.println(tAngle);
         Serial.println(PathFinding(currNode,targetNode));
-        if(currNode == targetNode) {state = 3;Serial.println("stop");}
+        if(currNode == targetNode) {
+          //state = 3;
+          TarP++;
+          if(TarP<5) targetNode = testNodeSeq[TarP];
+          state = 1;
+          Serial.print("new des ");
+          Serial.println(targetNode);
+          }
         }
       if(BoxSensed){
         leftMotor->run(RELEASE);
@@ -249,6 +258,17 @@ void loop(){
       break;
     case 1://rotating
       tAngle = IndexInArray(nextNode,currNode)%4;
+      if((tAngle-direction+4)%4 == 2){
+        back = !back;
+        state = 0;
+        Serial.print("no turn needed, now dir & next & back: ");
+        Serial.print(nextNode);
+        Serial.print(", ");
+        Serial.print(direction);
+        Serial.print(", ");
+        Serial.println(back);
+        break;
+      }
       bool turnDesPorN = ( (tAngle-direction)>0 ) ? ((tAngle-direction)>2?0:1) : ((tAngle-direction)<-2?1:0);
       leftMotor->setSpeed(255);
       rightMotor->setSpeed(255);
@@ -260,12 +280,13 @@ void loop(){
       }
       if(!LeftBoundaryRead && !RightBoundaryRead)reach = 1;
       if(reach){
-        if(LeftBoundaryRead && RightBoundaryRead ){//stops rotating
+        if(LeftBoundaryRead && RightBoundaryRead){
           leftMotor->run(RELEASE);
           rightMotor->run(RELEASE);
           direction = tAngle;
           state = 0;
-          
+          reach = 0;
+          back = 0;
           Serial.print("turned, now dir & next: ");
           Serial.print(nextNode);
           Serial.println(direction);
@@ -289,6 +310,7 @@ void loop(){
         //reach delivery area, drop
         //search for nearest box
         //update targetNode && newTargetNode
+        BoxLoaded = 0;
         }
         else{ //no box but finished route?
           //do nothing
