@@ -25,8 +25,9 @@ int RightLineSensorPin = 8;
 int LeftLineBoundaryPin = 6;
 int RightLineBoundaryPin = 5;
 
-int MagneticPin = 4; // the input pin for the magenetic sensor
+int MagneticPin = 3; // the input pin for the magenetic sensor
 int ButtonPin = 2;
+
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
 int edges[12][4] = {{1,-1,-1,-1},{-1,2,0,3},{6,-1,9999,1},{4,1,9999,-1},{7,5,3,-1},{11,6,-1,4},{9,-1,2,5},{-1,8,4,-1},{-1,10,11,7},{-1,-1,6,10},{-1,9,-1,8},{8,-1,5,-1}};
@@ -35,26 +36,39 @@ int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,99
 //                       0             1               2               3            4              5               6              7              8              9             10             11
 bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
-int testNodeSeq[5] = {10,5,11,6,11};
-int TarP = 0;
+int DesNodeSeq[5] = {1,-1,-1,-1,-1}; //the sequence of target nodes
+int TarP = 0;//target pointer, the pointer(index) of the next target in DesNodeSeq
 
-bool nodeTraveled[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+bool nodeTraveled[12] = {0,0,0,0,0,0,0,0,0,0,0,0};//temp arrays for path finding
 int disFromCurr [12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 int predecessor[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
 bool BoxLoaded = 0;
 bool BoxSensed = 0;
+int BoxDelivered = 0;
 
 int currNode = 0;
 int targetNode = 8;
 int nextNode = 1;
-int newTargetNode = 0;
+int tAngle;
 
 int state = 0;
 int direction = 0;
 bool back = 0;
 
-int PathFinding(int curr, int des){
+const int LongEdgeDistance = 70;
+
+float UltraRead,UltraDistance;
+float ToFDistance;
+int LeftLineRead,RightLineRead,LeftBoundaryRead,RightBoundaryRead;
+//int FrontLineRead;
+int MagRead = 0; // variable for reading the pin status
+
+int inputBytes[10];
+int inputBytePointer = 0;
+bool reach = 0;
+bool start = 0;
+int PathFinding(int curr, int des){ // set curr and des, return next node
   for(int i=0;i<12;i++){
     nodeTraveled[i]=0;
     disFromCurr[i]=1e9;
@@ -96,6 +110,42 @@ int PathFinding(int curr, int des){
   //Serial.println(curr);
   return curr;
 }
+void BoxFinding(int curr){ // set curr, find des node,might be updated later but with limited boxes it seems easier to use if statements?
+  if(BoxExists[5][0]){
+    DesNodeSeq[0] = 5;
+    for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
+    return;
+  }
+  if(BoxExists[5][2]){
+    //DesNodeSeq = {currNode == 11? 5:6,currNode == 11? 6:5,-1,-1,-1};
+    DesNodeSeq[0] = currNode == 11? 5:6;
+    DesNodeSeq[1] = currNode == 11? 6:5;
+    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
+    return;
+  }
+  if(BoxExists[5][4]){
+    //DesNodeSeq = {5,4,-1,-1,-1};
+    DesNodeSeq[0] = currNode == 5;
+    DesNodeSeq[1] = currNode == 4;
+    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
+    return;
+  }
+  if(BoxExists[1][2]){
+    //DesNodeSeq = {2,1,-1,-1,-1};
+    DesNodeSeq[0] = currNode == 2;
+    DesNodeSeq[1] = currNode == 1;
+    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
+    return;
+  }
+  if(BoxExists[1][4]){
+    //DesNodeSeq = {4,1,-1,-1,-1};
+    DesNodeSeq[0] = currNode == 4;
+    DesNodeSeq[1] = currNode == 1;
+    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
+    return;
+  }
+  return;
+}
 int IndexInArray(int goal, int curr){
   for(int i=0;i<4;i++){
     if(goal == edges[curr][i])return i;
@@ -103,8 +153,45 @@ int IndexInArray(int goal, int curr){
   return -1;
 }
 void DropBox(){
+  tAngle = currNode == 10?2:3;
+  bool turnDesPorN = ( (tAngle-direction)>0 ) ? ((tAngle-direction)>2?0:1) : ((tAngle-direction)<-2?1:0);
+  reach = 0;
+  leftMotor->setSpeed(255);
+  rightMotor->setSpeed(255);
+  while(1){
+    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+    leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
+    rightMotor->run(turnDesPorN?RELEASE:FORWARD);
+    if(!LeftBoundaryRead && !RightBoundaryRead)reach = 1;
+    if(reach){
+      if(LeftBoundaryRead && RightBoundaryRead){
+        leftMotor->run(RELEASE);
+        rightMotor->run(RELEASE);
+        direction = tAngle;
+        break;
+        reach = 0;
+        Serial.print("turned, now dir & next: ");
+        Serial.print(nextNode);
+        Serial.println(direction);
+      }
+    }
+  }
+  back = 0;
+  leftMotor->setSpeed(255);
+  rightMotor->setSpeed(255);
+  leftMotor->run(back?FORWARD:BACKWARD);
+  rightMotor->run(back?BACKWARD:FORWARD);
+  delay(1000);
+  back = 1;
+  leftMotor->setSpeed(255);
+  rightMotor->setSpeed(255);
+  leftMotor->run(back?FORWARD:BACKWARD);
+  rightMotor->run(back?BACKWARD:FORWARD);
   BoxLoaded = 0;
-  //todo
+  BoxDelivered++;
+  TarP = 0;
+  BoxFinding(currNode);
 }
 void PickBox(){
   BoxLoaded = 1;
@@ -113,7 +200,7 @@ void PickBox(){
 void setup() {
   Serial.begin(9600);
   currNode = 0;
-  targetNode = testNodeSeq[TarP];
+  targetNode = DesNodeSeq[TarP];
 
   Wire.begin();
   ToFSensor.begin(0x50);
@@ -141,17 +228,7 @@ void setup() {
   }}
   Serial.println("Motor Shield found.");
 }
-float UltraRead,UltraDistance;
-float ToFDistance;
-int LeftLineRead,RightLineRead,LeftBoundaryRead,RightBoundaryRead;
-//int FrontLineRead;
-int MagRead = 0; // variable for reading the pin status
 
-int inputBytes[10];
-int inputBytePointer = 0;
-bool reach = 0;
-
-bool start = 0;
 void loop(){
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
@@ -192,11 +269,15 @@ void loop(){
       Serial.println(incomingByte, DEC);}
     }
   nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
-  int tAngle;
+  
   if(start)
   switch(state){
     case 0://moving
-      tAngle = (direction + (back?2:0))%4;
+      if(IndexInArray(nextNode,currNode)%4!=direction){
+        back = 1;
+      }
+      //tAngle = (direction + (back?2:0))%4;
+      tAngle = direction;
       leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
       rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
       if(!LeftBoundaryRead&&!RightBoundaryRead){
@@ -230,11 +311,16 @@ void loop(){
         Serial.println((edges[nextNode][(1+tAngle)%4]));
       }
       
+      
       if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1) ){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
-        currNode = nextNode;
         
+        if(currNode == 0 && nextNode == 1 && !BoxExists[1][2] && !BoxExists[1][4] && !BoxDelivered) BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
+        if(currNode == 2 && nextNode == 6 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
+        if(currNode == 3 && nextNode == 4 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
+        //find box along the line
+        currNode = nextNode;
         state = 1;
         Serial.print("reach ");
         Serial.print(currNode);
@@ -244,10 +330,15 @@ void loop(){
         if(currNode == targetNode) {
           //state = 3;
           TarP++;
-          if(TarP<5) targetNode = testNodeSeq[TarP];
-          state = 1;
-          Serial.print("new des ");
-          Serial.println(targetNode);
+          if(TarP<5 && DesNodeSeq[TarP]!=-1) {
+            targetNode = DesNodeSeq[TarP];
+            state = 1;
+            Serial.print("new des ");
+            Serial.println(targetNode);}
+          else{
+            state = 3;
+            Serial.println("no target, find next");
+          }
           }
         }
       if(BoxSensed){
@@ -258,8 +349,12 @@ void loop(){
       break;
     case 1://rotating
       tAngle = IndexInArray(nextNode,currNode)%4;
+      back = 0;
+      if(tAngle == direction)break;
+      if(!BoxDelivered && currNode == 3 && nextNode == 4){
+        tAngle = 2;
+      }
       if((tAngle-direction+4)%4 == 2){
-        back = !back;
         state = 0;
         Serial.print("no turn needed, now dir & next & back: ");
         Serial.print(nextNode);
@@ -269,6 +364,7 @@ void loop(){
         Serial.println(back);
         break;
       }
+      
       bool turnDesPorN = ( (tAngle-direction)>0 ) ? ((tAngle-direction)>2?0:1) : ((tAngle-direction)<-2?1:0);
       leftMotor->setSpeed(255);
       rightMotor->setSpeed(255);
@@ -286,7 +382,6 @@ void loop(){
           direction = tAngle;
           state = 0;
           reach = 0;
-          back = 0;
           Serial.print("turned, now dir & next: ");
           Serial.print(nextNode);
           Serial.println(direction);
@@ -296,7 +391,6 @@ void loop(){
     case 2://picking
       //do something
       //update target node
-      newTargetNode = 10;
       BoxLoaded = 1;
       state = 0;
       break;
@@ -304,18 +398,25 @@ void loop(){
       //do something
       //targetNode = search for closest waste
       
-      if(newTargetNode != targetNode)targetNode = newTargetNode;//redirect to new target node
-      else{
-        if(BoxLoaded){
-        //reach delivery area, drop
-        //search for nearest box
-        //update targetNode && newTargetNode
+      
+      if(BoxLoaded){
+      //reach delivery area, drop
+      //search for nearest box
+      //update targetNode && newTargetNode
+        DropBox();
+        state = 1;
         BoxLoaded = 0;
-        }
-        else{ //no box but finished route?
-          //do nothing
-        }
+        TarP = 0;
       }
+      else{ //no box but finished route?
+        //do nothing
+        BoxLoaded = 1;
+        TarP = 0;
+        DesNodeSeq[0] = random(0,2)?10:11;
+        for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
+        state = 1;
+      }
+      
       
       break;
   }
