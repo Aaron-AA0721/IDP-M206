@@ -34,8 +34,11 @@ int edges[12][4] = {{1,-1,-1,-1},{-1,2,0,3},{6,-1,9999,1},{4,1,9999,-1},{7,5,3,-
 //                   0            1          2           3                 4            5           6          7           8             9             10          11
 int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,9999,-1},{80,100,80,-1},{40,100,-1,100},{80,-1,80,100},{-1,100,80,-1},{-1,40,40,100},{-1,-1,80,60},{-1,60,-1,40},{40,-1,40,-1}};
 //                       0             1               2               3            4              5               6              7              8              9             10             11
-bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+//bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
+int BoxPos[6] = {1,5,-1,-1,-1,-1};
+//bool BoxCollected[6] = {0,0,0,0,0,0};
+int CurrBox = 0;
 int DesNodeSeq[5] = {1,-1,-1,-1,-1}; //the sequence of target nodes
 int TarP = 0;//target pointer, the pointer(index) of the next target in DesNodeSeq
 
@@ -110,37 +113,21 @@ int PathFinding(int curr, int des){ // set curr and des, return next node
   //Serial.println(curr);
   return curr;
 }
-void BoxFinding(int curr){ // set curr, find des node,might be updated later but with limited boxes it seems easier to use if statements?
-  if(BoxExists[5][0]){
-    DesNodeSeq[0] = 5;
+void BoxFinding(int cBox,int cNode){ // set curr box to picked, find des node,might be updated later but with limited boxes it seems easier to use if statements?
+  while(BoxPos[cBox] == -1 && cBox<6)cBox++;
+  if(cBox == 6){
+    DesNodeSeq[0] = 0;
     for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
     return;
   }
-  if(BoxExists[5][2]){
-    //DesNodeSeq = {currNode == 11? 5:6,currNode == 11? 6:5,-1,-1,-1};
-    DesNodeSeq[0] = currNode == 11? 5:6;
-    DesNodeSeq[1] = currNode == 11? 6:5;
-    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
+  if(BoxPos[cBox] < 10) {
+    DesNodeSeq[0] = BoxPos[cBox];
+    for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
     return;
   }
-  if(BoxExists[5][4]){
-    //DesNodeSeq = {5,4,-1,-1,-1};
-    DesNodeSeq[0] = currNode == 5;
-    DesNodeSeq[1] = currNode == 4;
-    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
-    return;
-  }
-  if(BoxExists[1][2]){
-    //DesNodeSeq = {2,1,-1,-1,-1};
-    DesNodeSeq[0] = currNode == 2;
-    DesNodeSeq[1] = currNode == 1;
-    for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
-    return;
-  }
-  if(BoxExists[1][4]){
-    //DesNodeSeq = {4,1,-1,-1,-1};
-    DesNodeSeq[0] = currNode == 4;
-    DesNodeSeq[1] = currNode == 1;
+  if(BoxPos[cBox] < 100) {
+    DesNodeSeq[0] = BoxPos[cBox]%10;
+    DesNodeSeq[1] = BoxPos[cBox]/10;
     for(int i=2;i<5;i++)DesNodeSeq[i] = -1;
     return;
   }
@@ -178,20 +165,35 @@ void DropBox(){
     }
   }
   back = 0;
-  leftMotor->setSpeed(255);
-  rightMotor->setSpeed(255);
-  leftMotor->run(back?FORWARD:BACKWARD);
-  rightMotor->run(back?BACKWARD:FORWARD);
-  delay(1000);
+  for(int i=0;i<100;i++){
+    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+    leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
+    rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
+    leftMotor->run(back?FORWARD:BACKWARD);
+    rightMotor->run(back?BACKWARD:FORWARD);
+    delay(10);
+  }
   back = 1;
-  leftMotor->setSpeed(255);
-  rightMotor->setSpeed(255);
-  leftMotor->run(back?FORWARD:BACKWARD);
-  rightMotor->run(back?BACKWARD:FORWARD);
+  LeftLineRead =  digitalRead(LeftLineSensorPin);
+  RightLineRead =  digitalRead(RightLineSensorPin);
+  while(!LeftLineRead && !RightLineRead){
+    LeftLineRead =  digitalRead(LeftLineSensorPin);
+    RightLineRead =  digitalRead(RightLineSensorPin);
+    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+    leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
+    rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
+    leftMotor->run(back?FORWARD:BACKWARD);
+    rightMotor->run(back?BACKWARD:FORWARD);
+    delay(10);
+  }
   BoxLoaded = 0;
+  //BoxPos[CurrBox] = 0;
+  CurrBox++;
   BoxDelivered++;
   TarP = 0;
-  BoxFinding(currNode);
+  BoxFinding(CurrBox,currNode);
 }
 void PickBox(){
   BoxLoaded = 1;
@@ -316,10 +318,9 @@ void loop(){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
         
-        if(currNode == 0 && nextNode == 1 && !BoxExists[1][2] && !BoxExists[1][4] && !BoxDelivered) BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
-        if(currNode == 2 && nextNode == 6 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
-        if(currNode == 3 && nextNode == 4 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
-        //find box along the line
+        if(currNode == 0 && nextNode == 1 && BoxPos[2]==-1 && !BoxDelivered) BoxPos[2] = UltraDistance<LongEdgeDistance?13:12;
+        if(currNode == 2 && nextNode == 6 && BoxPos[3]==-1 && !BoxDelivered) BoxPos[3] = UltraDistance<LongEdgeDistance?56:45;
+        if(currNode == 3 && nextNode == 4 && BoxPos[3]==-1 && !BoxDelivered) BoxPos[3] = UltraDistance<LongEdgeDistance?45:56;//find box along the line
         currNode = nextNode;
         state = 1;
         Serial.print("reach ");
