@@ -18,15 +18,15 @@ int RLEDPin = 11; // the output pin for the Red LED
 int GLEDPin = 12; // the output pin for the Green LED
 int BLEDPin = 13; // the output pin for the Blue LED
 int ServoPin1 = 10; // the pin for the servos
-int ServoPin2 = 4; 
-int LeftLineSensorPin = 7; //the pin for three line followers
-int RightLineSensorPin = 8; 
+int ServoPin2 = 9; 
+int LeftLineSensorPin = 4; //the pin for three line followers
+int RightLineSensorPin = 7; 
 //int FrontLineSensorPin = 9;
-int LeftLineBoundaryPin = 6;
-int RightLineBoundaryPin = 5;
+int LeftLineBoundaryPin = 5;
+int RightLineBoundaryPin = 6;
 
 int MagneticPin = 3; // the input pin for the magenetic sensor
-int ButtonPin = 2;
+int ButtonPin = 8;
 
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
@@ -34,7 +34,7 @@ int edges[12][4] = {{1,-1,-1,-1},{-1,2,0,3},{6,-1,9999,1},{4,1,9999,-1},{7,5,3,-
 //                   0            1          2           3                 4            5           6          7           8             9             10          11
 int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,9999,-1},{80,100,80,-1},{40,100,-1,100},{80,-1,80,100},{-1,100,80,-1},{-1,40,40,100},{-1,-1,80,60},{-1,60,-1,40},{40,-1,40,-1}};
 //                       0             1               2               3            4              5               6              7              8              9             10             11
-//bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
+bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
 int BoxPos[6] = {1,5,-1,-1,-1,-1};
 //bool BoxCollected[6] = {0,0,0,0,0,0};
@@ -133,6 +133,17 @@ void BoxFinding(int cBox,int cNode){ // set curr box to picked, find des node,mi
   }
   return;
 }
+void UpdateBox(int pickedBox){
+  if(BoxPos[pickedBox] < 10) {
+    BoxExists[BoxPos[0]][0] = 0;
+    return;
+  }
+  if(BoxPos[pickedBox] < 100) {
+    int a = BoxPos[pickedBox]%10;int b = BoxPos[pickedBox]/10;
+    BoxExists[b][IndexInArray(a,b)] = BoxExists[a][IndexInArray(b,a)] = 0;
+    return;
+  }
+}
 int IndexInArray(int goal, int curr){
   for(int i=0;i<4;i++){
     if(goal == edges[curr][i])return i;
@@ -170,6 +181,10 @@ void DropBox(){
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
     leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
     rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
+    if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+      leftMotor->setSpeed(255);
+      rightMotor->setSpeed(255);
+    }
     leftMotor->run(back?FORWARD:BACKWARD);
     rightMotor->run(back?BACKWARD:FORWARD);
     delay(10);
@@ -177,18 +192,21 @@ void DropBox(){
   back = 1;
   LeftLineRead =  digitalRead(LeftLineSensorPin);
   RightLineRead =  digitalRead(RightLineSensorPin);
-  while(!LeftLineRead && !RightLineRead){
+  while(!LeftLineRead || !RightLineRead){
     LeftLineRead =  digitalRead(LeftLineSensorPin);
     RightLineRead =  digitalRead(RightLineSensorPin);
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
     leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
     rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
+    if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+      leftMotor->setSpeed(255);
+      rightMotor->setSpeed(255);
+    }
     leftMotor->run(back?FORWARD:BACKWARD);
     rightMotor->run(back?BACKWARD:FORWARD);
     delay(10);
   }
-  BoxLoaded = 0;
   //BoxPos[CurrBox] = 0;
   CurrBox++;
   BoxDelivered++;
@@ -254,7 +272,8 @@ void loop(){
   //Serial.println(FrontLineRead);
   int buttonread = digitalRead(ButtonPin);
   if(buttonread){
-
+    Serial.print("state: ");
+    Serial.println(state);
   }
   if(buttonread) start = 1;
   if (Serial.available() > 0)
@@ -283,7 +302,7 @@ void loop(){
       tAngle = direction;
       leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
       rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
-      if(!LeftBoundaryRead&&!RightBoundaryRead){
+      if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
         leftMotor->setSpeed(255);
         rightMotor->setSpeed(255);
       }
@@ -319,9 +338,21 @@ void loop(){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
         
-        if(currNode == 0 && nextNode == 1 && BoxPos[2]==-1 && !BoxDelivered) BoxPos[2] = UltraDistance<LongEdgeDistance?13:12;
-        if(currNode == 2 && nextNode == 6 && BoxPos[3]==-1 && !BoxDelivered) BoxPos[3] = UltraDistance<LongEdgeDistance?56:45;
-        if(currNode == 3 && nextNode == 4 && BoxPos[3]==-1 && !BoxDelivered) BoxPos[3] = UltraDistance<LongEdgeDistance?45:56;//find box along the line
+        if(currNode == 0 && nextNode == 1 && BoxPos[2]==-1 && !BoxDelivered) {
+          BoxPos[2] = UltraDistance<LongEdgeDistance?13:12;
+          BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
+        }
+        if(currNode == 2 && nextNode == 6 && BoxPos[3]==-1 && !BoxDelivered) {
+          BoxPos[3] = UltraDistance<LongEdgeDistance?56:45;
+          BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
+          }
+        if(currNode == 3 && nextNode == 4 && BoxPos[3]==-1 && !BoxDelivered) {
+          BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
+          BoxPos[3] = UltraDistance<LongEdgeDistance?45:56;
+        }//find box along the line
+        // if(currNode == 0 && nextNode == 1 && !BoxExists[1][2] && !BoxExists[1][4] && !BoxDelivered) BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
+        // if(currNode == 2 && nextNode == 6 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
+        // if(currNode == 3 && nextNode == 4 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
         currNode = nextNode;
         state = 1;
         Serial.print("reach ");
@@ -338,7 +369,29 @@ void loop(){
             Serial.print("new des ");
             Serial.println(targetNode);}
           else{
-            state = 3;
+            //state = 3;
+            if(BoxLoaded){
+              //reach delivery area, drop
+              //search for nearest box
+              //update targetNode && newTargetNode
+                DropBox();
+                state = 1;
+                BoxLoaded = 0;
+                TarP = 0;
+                targetNode = DesNodeSeq[0];
+              }
+              else{ //no box but finished route?
+                //do nothing
+                BoxLoaded = 1;
+                TarP = 0;
+                targetNode = random(0,2)?10:11;
+                Serial.print("new targetNode: ");
+                Serial.println(targetNode);
+                UpdateBox(CurrBox);
+                DesNodeSeq[TarP+1] = targetNode;
+                for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
+                state = 1;
+              }
             Serial.println("no target, find next");
           }
           }
@@ -353,7 +406,7 @@ void loop(){
       digitalWrite(led, HIGH); // moving, blue led on
       tAngle = IndexInArray(nextNode,currNode)%4;
       back = 0;
-      if(tAngle == direction)break;
+      if(tAngle == direction){state = 0;break;}
       if(!BoxDelivered && currNode == 3 && nextNode == 4){
         tAngle = 2;
       }
@@ -402,8 +455,7 @@ void loop(){
       digitalWrite(led, LOW); // not moving, blue led off
       //do something
       //targetNode = search for closest waste
-      
-      
+      Serial.println("hih?");
       if(BoxLoaded){
       //reach delivery area, drop
       //search for nearest box
@@ -417,12 +469,17 @@ void loop(){
         //do nothing
         BoxLoaded = 1;
         TarP = 0;
-        DesNodeSeq[0] = random(0,2)?10:11;
+        targetNode = random(0,2)?10:11;
+        Serial.print("new targetNode: ");
+        Serial.println(targetNode);
+        UpdateBox(CurrBox);
+        DesNodeSeq[TarP+1] = targetNode;
         for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
         state = 1;
       }
-      
-      
+      break;
+    default:
+      Serial.println("??");
       break;
   }
   /*if(inputBytes[inputBytePointer-1]==10){
