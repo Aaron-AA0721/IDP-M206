@@ -275,6 +275,7 @@ void loop(){
   if(start)
   switch(state){
     case 0://moving
+      digitalWrite(led, HIGH); // moving, blue led on
       if(IndexInArray(nextNode,currNode)%4!=direction){
         back = 1;
       }
@@ -349,6 +350,7 @@ void loop(){
       }
       break;
     case 1://rotating
+      digitalWrite(led, HIGH); // moving, blue led on
       tAngle = IndexInArray(nextNode,currNode)%4;
       back = 0;
       if(tAngle == direction)break;
@@ -390,12 +392,14 @@ void loop(){
       }
       break;
     case 2://picking
+      digitalWrite(led, LOW); // not moving, blue led off
       //do something
       //update target node
       BoxLoaded = 1;
       state = 0;
       break;
     case 3://dropping && redirecting
+      digitalWrite(led, LOW); // not moving, blue led off
       //do something
       //targetNode = search for closest waste
       
