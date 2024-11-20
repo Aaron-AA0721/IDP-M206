@@ -20,13 +20,13 @@ int BLEDPin = 13; // the output pin for the Blue LED
 int ServoPin1 = 10; // the pin for the servos
 int ServoPin2 = 9; 
 int LeftLineSensorPin = 4; //the pin for three line followers
-int RightLineSensorPin = 7; 
+int RightLineSensorPin = 5; 
 //int FrontLineSensorPin = 9;
-int LeftLineBoundaryPin = 5;
-int RightLineBoundaryPin = 6;
+int LeftLineBoundaryPin = 6;
+int RightLineBoundaryPin = 7;
 
 int MagneticPin = 3; // the input pin for the magenetic sensor
-int ButtonPin = 8;
+int ButtonPin = 2;
 
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
@@ -59,7 +59,7 @@ int state = 0;
 int direction = 0;
 bool back = 0;
 
-const int LongEdgeDistance = 70;
+const int LongEdgeDistance = 85;
 
 float UltraRead,UltraDistance;
 float ToFDistance;
@@ -71,6 +71,7 @@ int inputBytes[10];
 int inputBytePointer = 0;
 bool reach = 0;
 bool start = 0;
+bool end = 0;
 int PathFinding(int curr, int des){ // set curr and des, return next node
   for(int i=0;i<12;i++){
     nodeTraveled[i]=0;
@@ -114,7 +115,7 @@ int PathFinding(int curr, int des){ // set curr and des, return next node
   return curr;
 }
 void BoxFinding(int cBox,int cNode){ // set curr box to picked, find des node,might be updated later but with limited boxes it seems easier to use if statements?
-  while(BoxPos[cBox] == -1 && cBox<6)cBox++;
+  while(BoxPos[cBox] == -1 && cBox<6){cBox++;BoxDelivered++;}
   if(cBox == 6){
     DesNodeSeq[0] = 0;
     for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
@@ -197,8 +198,8 @@ void DropBox(){
     RightLineRead =  digitalRead(RightLineSensorPin);
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-    leftMotor->setSpeed((back^(!RightBoundaryRead))?50:255);
-    rightMotor->setSpeed((back^(!LeftBoundaryRead))?50:255);
+    leftMotor->setSpeed(((back^(!RightBoundaryRead))||(LeftLineRead&&!RightLineRead))?50:255);
+    rightMotor->setSpeed(((back^(!LeftBoundaryRead))||(RightLineRead&&!LeftLineRead))?50:255);
     if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
       leftMotor->setSpeed(255);
       rightMotor->setSpeed(255);
@@ -291,10 +292,10 @@ void loop(){
     }
   nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
   
-  if(start)
+  if(start && !end)
   switch(state){
     case 0://moving
-      digitalWrite(led, HIGH); // moving, blue led on
+      digitalWrite(BLEDPin, HIGH); // moving, blue led on
       if(IndexInArray(nextNode,currNode)%4!=direction){
         back = 1;
       }
@@ -338,17 +339,26 @@ void loop(){
         leftMotor->run(RELEASE);
         rightMotor->run(RELEASE);
         
-        if(currNode == 0 && nextNode == 1 && BoxPos[2]==-1 && !BoxDelivered) {
+        if(currNode == 0 && nextNode == 1 && BoxPos[2]==-1 && BoxDelivered==0) {
           BoxPos[2] = UltraDistance<LongEdgeDistance?13:12;
           BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
+          Serial.println(UltraDistance,0);
+          Serial.println("cm");
+          Serial.println(UltraDistance<LongEdgeDistance?"box on 13":"box on 12");
         }
-        if(currNode == 2 && nextNode == 6 && BoxPos[3]==-1 && !BoxDelivered) {
+        if(currNode == 2 && nextNode == 6 && BoxPos[3]==-1 && BoxDelivered==0) {
           BoxPos[3] = UltraDistance<LongEdgeDistance?56:45;
           BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
+          Serial.println(UltraDistance,0);
+          Serial.println("cm");
+          Serial.println(UltraDistance<LongEdgeDistance?"box on 56":"box on 45");
           }
-        if(currNode == 3 && nextNode == 4 && BoxPos[3]==-1 && !BoxDelivered) {
+        if(currNode == 3 && nextNode == 4 && BoxPos[3]==-1 && BoxDelivered==0) {
           BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
           BoxPos[3] = UltraDistance<LongEdgeDistance?45:56;
+          Serial.println(UltraDistance,0);
+          Serial.println("cm");
+          Serial.println(UltraDistance<LongEdgeDistance?"box on 45":"box on 56");
         }//find box along the line
         // if(currNode == 0 && nextNode == 1 && !BoxExists[1][2] && !BoxExists[1][4] && !BoxDelivered) BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
         // if(currNode == 2 && nextNode == 6 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
@@ -369,7 +379,17 @@ void loop(){
             Serial.print("new des ");
             Serial.println(targetNode);}
           else{
-            //state = 3;
+            //state = 3; 
+            if(BoxDelivered == 6){
+              end = 1;
+              leftMotor->setSpeed(255);
+              rightMotor->setSpeed(255);
+              leftMotor->run(BACKWARD);
+              rightMotor->run(FORWARD);
+              delay(1000);
+              leftMotor->run(RELEASE);
+              rightMotor->run(RELEASE);
+              break;}
             if(BoxLoaded){
               //reach delivery area, drop
               //search for nearest box
@@ -403,7 +423,7 @@ void loop(){
       }
       break;
     case 1://rotating
-      digitalWrite(led, HIGH); // moving, blue led on
+      digitalWrite(BLEDPin, HIGH); // moving, blue led on
       tAngle = IndexInArray(nextNode,currNode)%4;
       back = 0;
       if(tAngle == direction){state = 0;break;}
@@ -445,14 +465,14 @@ void loop(){
       }
       break;
     case 2://picking
-      digitalWrite(led, LOW); // not moving, blue led off
+      digitalWrite(BLEDPin, LOW); // not moving, blue led off
       //do something
       //update target node
       BoxLoaded = 1;
       state = 0;
       break;
     case 3://dropping && redirecting
-      digitalWrite(led, LOW); // not moving, blue led off
+      digitalWrite(BLEDPin, LOW); // not moving, blue led off
       //do something
       //targetNode = search for closest waste
       Serial.println("hih?");
