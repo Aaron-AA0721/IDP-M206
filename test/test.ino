@@ -17,6 +17,9 @@ Adafruit_DCMotor *exMotor = AFMS.getMotor(2); // extra 18RPM motor
 int RLEDPin = 11; // the output pin for the Red LED
 int GLEDPin = 12; // the output pin for the Green LED
 int BLEDPin = 13; // the output pin for the Blue LED
+int BlueState = LOW // stores state of Blue LED so it can flash
+unsigned long previoustime = 0;  // last time Blue LED was updated
+const long interval = 500;  // interval for Blue LED to blink (milliseconds)
 int ServoPin1 = 10; // the pin for the servos
 int ServoPin2 = 9; 
 int LeftLineSensorPin = 4; //the pin for three line followers
@@ -218,6 +221,18 @@ void PickBox(){
   BoxLoaded = 1;
   //todo
 }
+void blue_flashing() { // makes Blue LED flash at 2Hz
+  unsigned long currenttime = millis();
+  if (currenttime - previoustime >= interval) { // check if 0.5s has passed
+    previoustime = currenttime; // update the last time the LED flashed
+    if (blueState == LOW) {
+      blueState = HIGH;
+    } else {
+      blueState = LOW;
+    }
+    digitalWrite(ledPin, blueState);
+  }
+}
 void setup() {
   Serial.begin(9600);
   currNode = 0;
@@ -295,7 +310,7 @@ void loop(){
   if(start && !end)
   switch(state){
     case 0://moving
-      digitalWrite(BLEDPin, HIGH); // moving, blue led on
+      blue_flashing(); // moving, Blue LED flashes
       if(IndexInArray(nextNode,currNode)%4!=direction){
         back = 1;
       }
@@ -423,7 +438,7 @@ void loop(){
       }
       break;
     case 1://rotating
-      digitalWrite(BLEDPin, HIGH); // moving, blue led on
+      blue_flashing(); // moving, Blue LED flashes
       tAngle = IndexInArray(nextNode,currNode)%4;
       back = 0;
       if(tAngle == direction){state = 0;break;}
