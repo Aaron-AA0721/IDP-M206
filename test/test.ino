@@ -46,7 +46,7 @@ int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 int edges[12][4] = {{1,-1,-1,-1},{-1,2,0,3},{6,-1,9999,1},{4,1,9999,-1},{7,5,3,-1},{11,6,-1,4},{9,-1,2,5},{-1,8,4,-1},{-1,10,11,7},{-1,-1,6,10},{-1,9,9999,8},{8,-1,5,9999}};
 //                   0            1          2           3                 4            5           6          7           8             9             10          11
 int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,9999,-1},{80,100,80,-1},{40,100,-1,100},{80,-1,80,100},{-1,100,80,-1},{-1,40,40,100},{-1,-1,80,60},{-1,60,-1,40},{40,-1,40,-1}};
-//                       0             1               2               3            4              5               6              7              8              9             10             11
+//                       0             1               2               3            4              5               6              7              8                  9             10             11
 bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
 int BoxPos[6] = {1,5,-1,-1,-1,-1};
@@ -72,7 +72,7 @@ int state = 0;
 int direction = 0;
 bool back = 0;
 
-const int LongEdgeDistance = 85;
+const int LongEdgeDistance = 80;
 
 float UltraRead,UltraDistance;
 float ToFDistance;
@@ -117,8 +117,8 @@ int PathFinding(int curr, int des){ // set curr and des, return next node
       index = IndexInArray(i,curr);
       if(!nodeTraveled[i]){
         if(index!=-1){
-          if(disFromCurr[i]>disFromCurr[curr]+edges[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){
-            disFromCurr[i]=disFromCurr[curr]+edges[curr][index];
+          if(disFromCurr[i]>disFromCurr[curr]+distance[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){
+            disFromCurr[i]=disFromCurr[curr]+distance[curr][index];
             predecessor[i]=curr;
           }
         }
@@ -218,6 +218,7 @@ void DropBox(){
     MotorRun(Lspeed,Rspeed,back?FORWARD:BACKWARD,back?BACKWARD:FORWARD);
     delay(5);
   }
+  MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
   lifter.write(140);
   grabber.write(90);
   delay(1000);
@@ -237,16 +238,18 @@ void DropBox(){
     // }
     // leftMotor->setSpeed((((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )||(LeftLineRead&&!RightLineRead))?50:255);
     // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
-    Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
-    Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
-    if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
-      // leftMotor->setSpeed(255);
-      // rightMotor->setSpeed(255);
-      Lspeed = Rspeed = 255;
-    }
+    // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
+    // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
+    Lspeed = (LeftLineRead&&!RightLineRead)?50:255;
+    Rspeed = (RightLineRead&&!LeftLineRead)?50:255;
+    // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+    //   // leftMotor->setSpeed(255);
+    //   // rightMotor->setSpeed(255);
+    //   Lspeed = Rspeed = 255;
+    // }
     // leftMotor->run(back?FORWARD:BACKWARD);
     // rightMotor->run(back?BACKWARD:FORWARD);
-    MotorRun(Lspeed,Rspeed,back?FORWARD:BACKWARD,back?BACKWARD:FORWARD);
+    MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
     delay(10);
   }
   //BoxPos[CurrBox] = 0;
@@ -323,6 +326,8 @@ ISR(TIMER2_COMPA_vect) {
   BlueState = !BlueState;
   }
 }
+int NumOfLineToPass = 0;
+int NumOfLineCounter = 0;
 void loop(){
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
@@ -348,9 +353,7 @@ void loop(){
   //digitalWrite(RLEDPin,HIGH);
   //Serial.println(FrontLineRead);
   int buttonread = digitalRead(ButtonPin);
-  if(buttonread){
-    
-  }
+  
   if(buttonread) start = 1;
   if (Serial.available() > 0)
     {
@@ -366,19 +369,19 @@ void loop(){
       Serial.println(incomingByte, DEC);}
     }
   nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
-  
+  if(buttonread){
+    Serial.println(state);
+  }
   if(start && !end)
   switch(state){
     case 0://moving
       //blue_flashing(); // moving, Blue LED flashes
-      if(IndexInArray(nextNode,currNode)%4!=direction){
-        back = 1;
-      }
+      NumOfLineCounter =0;
       //tAngle = (direction + (back?2:0))%4;
       tAngle = direction;
-      Lspeed = (((!back&&!RightBoundaryRead)||(back && RightBoundaryRead)) )?50:255;
-      Rspeed = (((!back&&!LeftBoundaryRead)||(back && LeftBoundaryRead)) )?50:255;
-      if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+      Lspeed = RightBoundaryRead ? 255 : 50;
+      Rspeed = LeftBoundaryRead ?255 : 50;
+      if(!LeftBoundaryRead && !RightBoundaryRead){
         Lspeed = Rspeed = 255;
       }
       // leftMotor->run(back?FORWARD:BACKWARD);
@@ -411,7 +414,7 @@ void loop(){
       
       
       if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1) ){
-        delay(100);
+        //delay(100);
         // leftMotor->run(RELEASE);
         // rightMotor->run(RELEASE);
         MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
@@ -422,20 +425,14 @@ void loop(){
           Serial.println("cm");
           Serial.println(UltraDistance<LongEdgeDistance?"box on 13":"box on 12");
         }
-        if(currNode == 2 && nextNode == 6 && BoxPos[3]==-1 && BoxDelivered==0) {
+        if(currNode == 11 && nextNode == 5 && BoxPos[3]==-1 && BoxDelivered==1) {
           BoxPos[3] = UltraDistance<LongEdgeDistance?56:45;
           BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
           Serial.println(UltraDistance,0);
           Serial.println("cm");
           Serial.println(UltraDistance<LongEdgeDistance?"box on 56":"box on 45");
           }
-        if(currNode == 3 && nextNode == 4 && BoxPos[3]==-1 && BoxDelivered==0) {
-          BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
-          BoxPos[3] = UltraDistance<LongEdgeDistance?45:56;
-          Serial.println(UltraDistance,0);
-          Serial.println("cm");
-          Serial.println(UltraDistance<LongEdgeDistance?"box on 45":"box on 56");
-        }//find box along the line
+        //find box along the line
         // if(currNode == 0 && nextNode == 1 && !BoxExists[1][2] && !BoxExists[1][4] && !BoxDelivered) BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
         // if(currNode == 2 && nextNode == 6 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
         // if(currNode == 3 && nextNode == 4 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
@@ -467,6 +464,10 @@ void loop(){
               //update targetNode && newTargetNode
                 DropBox();
                 state = 1;
+                Serial.print(LeftBoundaryRead);
+                Serial.print(RightBoundaryRead);
+                Serial.print(LeftLineRead);
+                Serial.print(RightLineRead);
                 BoxLoaded = 0;
                 TarP = 0;
                 targetNode = DesNodeSeq[0];
@@ -475,7 +476,7 @@ void loop(){
                 //do nothing
                 BoxLoaded = 1;
                 TarP = 0;
-                targetNode = random(0,2)?10:11;
+                targetNode = 11;
                 Serial.print("new targetNode: ");
                 Serial.println(targetNode);
                 UpdateBox(CurrBox);
@@ -499,21 +500,31 @@ void loop(){
       tAngle = IndexInArray(nextNode,currNode)%4;
       back = 0;
       if(tAngle == direction){state = 0;break;}
-      if(!BoxDelivered && currNode == 3 && nextNode == 4){
-        tAngle = 2;
-      }
-      if((tAngle-direction+4)%4 == 2){
-        state = 0;
-        Serial.print("no turn needed, now dir & next & back: ");
-        Serial.print(nextNode);
-        Serial.print(", ");
-        Serial.print(direction);
-        Serial.print(", ");
-        Serial.println(back);
-        break;
-      }
       
       bool turnDesPorN = ( (tAngle-direction)>0 ) ? ((tAngle-direction)>2?0:1) : ((tAngle-direction)<-2?1:0);
+      NumOfLineToPass = 0;
+
+      
+      
+      
+      int tmp=((tAngle-direction)>0 ) ? ((tAngle-direction)>2?1:(tAngle-direction)) : ((tAngle-direction)<-2?1:(direction-tAngle));
+      if(buttonread){
+        Serial.println(tAngle);
+        Serial.println(direction);
+        Serial.println(tmp);
+      }
+      
+      for(int i=1;i<=tmp;i++){
+        //Serial.print("dead?");
+        if(edges[currNode][(direction+(turnDesPorN?1:-1)*i+4)%4] != -1) NumOfLineToPass++;
+      }
+      if(buttonread){
+        Serial.print((tAngle-direction)>0 ) ? ((tAngle-direction)>2?1:(tAngle-direction)) : ((tAngle-direction)<-2?1:(direction-tAngle));
+        Serial.print(NumOfLineToPass);
+        Serial.print(": ");
+        Serial.println(NumOfLineCounter);
+      }
+      
       // leftMotor->setSpeed(255);
       // rightMotor->setSpeed(255);
       Lspeed = Rspeed = 255;
@@ -527,20 +538,25 @@ void loop(){
       if(!LeftBoundaryRead && !RightBoundaryRead)reach = 1;
       if(reach){
         if(LeftBoundaryRead && RightBoundaryRead){
-          while( LeftBoundaryRead && RightBoundaryRead){
-            LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-            RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-            continue;
-          }
-          MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-          // leftMotor->run(RELEASE);
-          // rightMotor->run(RELEASE);
-          direction = tAngle;
-          state = 0;
+          NumOfLineCounter++;
           reach = 0;
-          Serial.print("turned, now dir & next: ");
-          Serial.print(nextNode);
-          Serial.println(direction);
+          if(NumOfLineToPass == NumOfLineCounter){
+            MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+            // leftMotor->run(RELEASE);
+            // rightMotor->run(RELEASE);
+            direction = tAngle;
+            state = 0;
+            reach = 0;
+            Serial.print("turned, now dir & next: ");
+            Serial.print(nextNode);
+            Serial.println(direction);
+          }
+          // while( LeftBoundaryRead && RightBoundaryRead){
+          //   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+          //   RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+          //   continue;
+          // }
+          
         }
       }
       break;
@@ -579,7 +595,7 @@ void loop(){
       digitalWrite(BLEDPin, LOW); // not moving, blue led off
       //do something
       //targetNode = search for closest waste
-      Serial.println("hih?");
+      Serial.println("hih?");//state 3 not working?
       if(BoxLoaded){
       //reach delivery area, drop
       //search for nearest box
