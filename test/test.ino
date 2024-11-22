@@ -412,21 +412,22 @@ void loop(){
         Serial.println((edges[nextNode][(1+tAngle)%4]));
       }
       
-      
-      if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1) ){
+      if(!LeftLineRead && !RightLineRead)reach = 1;
+      if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1)  && reach){
         //delay(100);
+        reach = 0;
         // leftMotor->run(RELEASE);
         // rightMotor->run(RELEASE);
         MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
         if(currNode == 0 && nextNode == 1 && BoxPos[2]==-1 && BoxDelivered==0) {
-          BoxPos[2] = UltraDistance<LongEdgeDistance?13:12;
+          BoxPos[3] = UltraDistance<LongEdgeDistance?13:12;
           BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
           Serial.println(UltraDistance,0);
           Serial.println("cm");
           Serial.println(UltraDistance<LongEdgeDistance?"box on 13":"box on 12");
         }
         if(currNode == 11 && nextNode == 5 && BoxPos[3]==-1 && BoxDelivered==1) {
-          BoxPos[3] = UltraDistance<LongEdgeDistance?56:45;
+          BoxPos[2] = UltraDistance<LongEdgeDistance?56:45;
           BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
           Serial.println(UltraDistance,0);
           Serial.println("cm");
@@ -504,7 +505,7 @@ void loop(){
       bool turnDesPorN = ( (tAngle-direction)>0 ) ? ((tAngle-direction)>2?0:1) : ((tAngle-direction)<-2?1:0);
       NumOfLineToPass = 0;
 
-      
+      bool UTurn = (tAngle-direction+4)%4 == 2;
       
       
       int tmp=((tAngle-direction)>0 ) ? ((tAngle-direction)>2?1:(tAngle-direction)) : ((tAngle-direction)<-2?1:(direction-tAngle));
@@ -530,7 +531,7 @@ void loop(){
       Lspeed = Rspeed = 255;
       // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
       // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
-      MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:RELEASE,turnDesPorN?RELEASE:FORWARD);
+      MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:(UTurn?FORWARD:RELEASE),turnDesPorN?(UTurn?BACKWARD:RELEASE):FORWARD);
       if(buttonread){
         Serial.print(nextNode);
         Serial.println(tAngle);
