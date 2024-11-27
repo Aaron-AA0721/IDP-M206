@@ -1,34 +1,31 @@
 #include <Servo.h>
 
 Servo myservo1; // grabber
-Servo myservo2; // lifter
-
 
 
 int RLEDPin = 7; // the output pin for the Red LED
 int GLEDPin = 8; // the output pin for the Green LED
 
 
-int pos1 = 80; // grabber starting angle
-int pos2 = 140; // lifter starting angle
-int crashswitchPin = 10;
+int pos1 = 90; // grabber starting angle
+
+int infraredPin = 8;
 int magPin = 9;
 
 void setup() {
-  myservo1.attach(13); 
-  myservo2.attach(12);
+  myservo1.attach(7);
 
   Serial.begin(9600); 
-  pinMode(crashswitchPin, INPUT);
+  pinMode(infraredPin, INPUT);
   pinMode(magPin, INPUT);
   myservo1.write(pos1); // possibly not needed
-  myservo2.write(pos2);
-  delay(5000);
+  delay(2000);
+  Serial.println("start");
 }
 bool ok = 0;
 void loop() {
 
-  int box_held = digitalRead(crashswitchPin); // read crash switch value
+  int box_found = digitalRead(infraredPin); // read crash switch value
   int mag = digitalRead(magPin); // read magnetic sensor
 
   // if ((pos2 > 0) && (box_held == LOW)) { // lifts box 90 degrees up
@@ -62,13 +59,11 @@ void loop() {
   //   digitalWrite(RLEDPin, LOW);
   //   digitalWrite(GLEDPin, LOW);
   // }
+  if(box_found){
 
-  int val = digitalRead(crashswitchPin); // read input value
-  if(!val) {ok = 1;Serial.println("good");}
-  if(pos1<135 && !ok)pos1++;
-  if(ok && pos2 > 90)pos2--;
+  }
+  //if(pos1>30)pos1--;
   myservo1.write(pos1); // possibly not needed
-  myservo2.write(pos2);
   
 // if ((pos2 > 0) && (val == LOW)) { // lifts box 90 degrees up
 //     pos2 -= 1;

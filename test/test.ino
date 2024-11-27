@@ -25,10 +25,10 @@ int BlueState = 0; // stores state of Blue LED so it can flash
 // int LeftLineSensorPin = 4; //the pin for three line followers
 // int RightLineSensorPin = 5; 
 
-int grabberPin = 13; // the pin for the servos
-int lifterPin = 12; 
-int crashswitchPin = 11;
-int MagneticPin = 10; // the input pin for the magenetic sensor
+int grabberPin = 7; // the pin for the servos
+//int lifterPin = 12; 
+//int crashswitchPin = 11;
+int MagneticPin = 2; // the input pin for the magenetic sensor
 
 int infraredPin = 8;
 int LeftLineSensorPin = 12; // outside pins for line followers
@@ -53,7 +53,7 @@ bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,
 int BoxPos[6] = {1,5,-1,-1,65,31};
 bool BoxOffLine = 0;
 //bool BoxCollected[6] = {0,0,0,0,0,0};
-int CurrBox = 0;
+int CurrBox = 3;
 int DesNodeSeq[5] = {1,-1,-1,-1,-1}; //the sequence of target nodes
 int TarP = 0;//target pointer, the pointer(index) of the next target in DesNodeSeq
 
@@ -62,6 +62,7 @@ int disFromCurr [12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 int predecessor[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
 bool BoxLoaded = 0;
+bool BoxMagnetic = 0;
 bool BoxSensed = 0;
 int BoxDelivered = 0;
 
@@ -83,8 +84,7 @@ int crashswitchRead,infraredRead;
 //int FrontLineRead;
 int MagRead = 0; // variable for reading the pin status
 
-int grabberAngle = 90;
-int lifterAngle = 140;
+int grabberAngle = 30;
 
 bool inSlot = 0;
 float MaxTofDistance = 0;
@@ -188,9 +188,8 @@ void DropBox(){
   reach = 0;
   // leftMotor->setSpeed(255);
   // rightMotor->setSpeed(255);
-  bool UTurn = (tAngle-direction+4)%4 == 2;
-  Lspeed = (!turnDesPorN && !UTurn)?120:255;
-  Rspeed = (turnDesPorN && !UTurn)?120:255;
+  Lspeed = !turnDesPorN?127:255;
+  Rspeed = turnDesPorN?127:255;
   while(1){
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
@@ -319,6 +318,7 @@ void PickBoxOffLine(){
     // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
     MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
   }
+  delay(500);
   while(!LeftLineRead || !RightLineRead){
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
@@ -328,7 +328,7 @@ void PickBoxOffLine(){
     Rspeed = RightLineRead?0:255;
     // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
     // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
-    MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:RELEASE,turnDesPorN?RELEASE:FORWARD);
+    MotorRun(Lspeed,Rspeed,turnDesPorN?FORWARD:BACKWARD,turnDesPorN?FORWARD:BACKWARD);
   }
   back = 0;
   reach = 0;
@@ -467,7 +467,7 @@ void setup() {
   pinMode(BLEDPin, OUTPUT);
   pinMode(infraredPin, INPUT);
   pinMode(MagneticPin, INPUT); // declare mag pin as input
-  pinMode(crashswitchPin,INPUT);
+  //pinMode(crashswitchPin,INPUT);
   pinMode(RedButtonPin,INPUT);
   pinMode(ButtonPin,INPUT);
   pinMode(LeftLineSensorPin, INPUT);
@@ -477,9 +477,8 @@ void setup() {
   pinMode(RightLineBoundaryPin, INPUT);
 
   grabber.attach(grabberPin);
-  lifter.attach(lifterPin);
+  //lifter.attach(lifterPin);
   grabber.write(grabberAngle);
-  lifter.write(lifterAngle);
 
   if (!AFMS.begin()) {         // create with the default frequency 1.6KHz
     if (!AFMS.begin(1000)) {  // OR with a different frequency, say 1KHz
@@ -521,8 +520,8 @@ void loop(){
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
   UltraDistance = UltraRead * MAX_RANG / ADC_SOLUTION;
-  crashswitchRead = digitalRead(crashswitchPin);
-  //BoxSensed = infraredRead && !digitalRead(infraredPin);
+  //crashswitchRead = digitalRead(crashswitchPin);
+  BoxSensed = infraredRead && !digitalRead(infraredPin);
   infraredRead = digitalRead(infraredPin);
   
   //Serial.println(UltraDistance,0);
@@ -612,7 +611,7 @@ void loop(){
           if(MaxTofDistance<ToFDistance)MaxTofDistance = ToFDistance;
           for(int i=0;i<4;i++)ToFReaings[i]=ToFReaings[i+1];
           ToFReaings[4] = ToFDistance;
-          if(ToFReaings[0]>ToFReaings[1]&&ToFReaings[1]>ToFReaings[2]&&ToFReaings[2]<ToFReaings[3]&&ToFReaings[3]<ToFReaings[4] && MaxTofDistance - ToFReaings[2]>=70){
+          if(ToFReaings[0]>=ToFReaings[1]&&ToFReaings[1]>=ToFReaings[2]&&ToFReaings[2]<=ToFReaings[3]&&ToFReaings[3]<=ToFReaings[4] && MaxTofDistance - ToFReaings[2]>=30){
             PickBoxOffLine();
           }
         }
@@ -628,7 +627,7 @@ void loop(){
           // }
           for(int i=0;i<4;i++)ToFReaings[i]=ToFReaings[i+1];
           ToFReaings[4] = ToFDistance;
-          if(ToFReaings[0]>ToFReaings[1]&&ToFReaings[1]>ToFReaings[2]&&ToFReaings[2]<ToFReaings[3]&&ToFReaings[3]<ToFReaings[4] && MaxTofDistance - ToFReaings[2]>=70){
+          if(ToFReaings[0]>=ToFReaings[1]&&ToFReaings[1]>=ToFReaings[2]&&ToFReaings[2]<=ToFReaings[3]&&ToFReaings[3]<=ToFReaings[4] && MaxTofDistance - ToFReaings[2]>=30){
             PickBoxOffLine();
           }
         }
@@ -696,7 +695,8 @@ void loop(){
               else{ //no box but finished route?
                 BoxLoaded = 1;
                 TarP = 0;
-                targetNode = random(0,2)?10:11;
+                targetNode = BoxMagnetic?11:10;
+                BoxMagnetic = 0;
                 UpdateBox(CurrBox);
                 DesNodeSeq[TarP+1] = targetNode;
                 for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
@@ -708,7 +708,7 @@ void loop(){
           }
           }
         }
-      if(BoxSensed && !BoxLoaded){
+      if(infraredRead && !BoxLoaded){
         // leftMotor->run(RELEASE);
         // rightMotor->run(RELEASE);
         MotorRun(255,255,RELEASE,RELEASE);
@@ -783,30 +783,49 @@ void loop(){
       break;
     case 2://picking
       //digitalWrite(BLEDPin, LOW); // not moving, blue led off
-      if(!crashswitchRead && !BoxLoaded){
-        Lspeed = Rspeed = 100;
-        MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
-        if(grabberAngle<90){
-          grabberAngle++;
-          grabber.write(grabberAngle);
-        }
-        else BoxLoaded = 1;
+      if(MagRead)BoxMagnetic=1;
+      MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+      while(grabberAngle<90){
+        grabberAngle++;
       }
-      else{
-        BoxLoaded = 1;
-        if(lifterAngle >90){
-          lifterAngle--;
-          lifter.write(lifterAngle);}
-        else{
-          // targetNode = random(0,2)?10:11;
-          // Serial.print("new targetNode: ");
-          // Serial.println(targetNode);
-          UpdateBox(CurrBox);
-          DesNodeSeq[TarP+1] = random(0,2)?10:11;
-          for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
-          state = 0;
+      while(infraredRead){
+        Lspeed = RightBoundaryRead ? 255 : 50;
+        Rspeed = LeftBoundaryRead ?255 : 50;
+        if(!LeftBoundaryRead && !RightBoundaryRead){
+          Lspeed = Rspeed = 255;
         }
+      // leftMotor->run(back?FORWARD:BACKWARD);
+      // rightMotor->run(back?BACKWARD:FORWARD);
+      MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
       }
+      delay(500);
+      MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+      if(grabberAngle>30)grabberAngle--;
+
+      // if(!crashswitchRead && !BoxLoaded){
+      //   Lspeed = Rspeed = 100;
+      //   MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
+      //   if(grabberAngle<90){
+      //     grabberAngle++;
+      //     grabber.write(grabberAngle);
+      //   }
+      //   else BoxLoaded = 1;
+      // }
+      // else{
+      //   BoxLoaded = 1;
+      //   if(lifterAngle >90){
+      //     lifterAngle--;
+      //     lifter.write(lifterAngle);}
+      //   else{
+      //     // targetNode = random(0,2)?10:11;
+      //     // Serial.print("new targetNode: ");
+      //     // Serial.println(targetNode);
+      //     UpdateBox(CurrBox);
+      //     DesNodeSeq[TarP+1] = random(0,2)?10:11;
+      //     for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
+      //     state = 0;
+      //   }
+      // }
       //do something
       //update target node
       BoxLoaded = 1;
