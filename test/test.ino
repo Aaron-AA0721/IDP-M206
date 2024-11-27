@@ -294,10 +294,91 @@ void DropBox(){
   PickedBoxOffline = 0;
   BoxFinding(CurrBox,currNode);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void PickBox(){
+  //digitalWrite(BLEDPin, LOW); // not moving, blue led off
+      
+      
+      while(grabberAngle<90){
+        MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+        grabberAngle++;
+        grabber.write(grabberAngle);
+        Serial.println(grabberAngle);
+        delay(10);
+      }
+      while(!infraredRead){
+        infraredRead = digitalRead(infraredPin);
+        LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+        RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+        Lspeed = RightBoundaryRead ? 255 : 50;
+        Rspeed = LeftBoundaryRead ?255 : 50;
+        if(!LeftBoundaryRead && !RightBoundaryRead){
+          Lspeed = Rspeed = 255;
+        }
+      // leftMotor->run(back?FORWARD:BACKWARD);
+      // rightMotor->run(back?BACKWARD:FORWARD);
+      MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
+      Serial.println("moving towards box");
+      }
+      for(int i=0;i<40;i++){
+        LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+        RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+        Lspeed = RightBoundaryRead ? 255 : 50;
+        Rspeed = LeftBoundaryRead ?255 : 50;
+        if(!LeftBoundaryRead && !RightBoundaryRead){
+          Lspeed = Rspeed = 255;
+        }
+        MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
+        delay(5);
+      }
+      while(grabberAngle>30){
+        MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+        grabberAngle--;
+        grabber.write(grabberAngle);
+        Serial.println(grabberAngle);
+        if(digitalRead(MagneticPin))BoxMagnetic=1;
+        delay(10);
+      }
+      
+
+      
+      
   BoxLoaded = 1;
+  Serial.println("Finished");
+  
   //todo
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void PickBoxOffLine(){
   Serial.println(CurrBox);
   Serial.println("Found Box, turning");
@@ -411,6 +492,16 @@ void PickBoxOffLine(){
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
   PickedBoxOffline = 1;
 }
+
+
+
+
+
+
+
+
+
+
 // void blue_flashing() { // makes Blue LED flash at 2Hz
 //   unsigned long currenttime = millis();
 //   if (currenttime - previoustime >= interval) { // check if 0.5s has passed
@@ -517,6 +608,7 @@ int NumOfLineToPass = 0;
 int NumOfLineCounter = 0;
 int ToFReaings[5] = {0,1,2,3,4};
 void loop(){
+  Serial.println("Entering Loop");
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
   UltraDistance = UltraRead * MAX_RANG / ADC_SOLUTION;
@@ -545,6 +637,7 @@ void loop(){
   if(buttonread) start = 1;
   if (Serial.available() > 0)
     {
+      Serial.println("Serial input");
     // read the incoming byte:
     int incomingByte = 0;
     incomingByte = Serial.read();
@@ -708,11 +801,13 @@ void loop(){
           }
           }
         }
-      if(infraredRead && !BoxLoaded){
+      if(!infraredRead && !BoxLoaded){
         // leftMotor->run(RELEASE);
         // rightMotor->run(RELEASE);
-        MotorRun(255,255,RELEASE,RELEASE);
-        state = 2;
+        PickBox();
+        Serial.println("picked");
+        state = 0;
+        //loop();
       }
       break;
     case 1://rotating
@@ -782,25 +877,7 @@ void loop(){
       }
       break;
     case 2://picking
-      //digitalWrite(BLEDPin, LOW); // not moving, blue led off
-      if(MagRead)BoxMagnetic=1;
-      MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-      while(grabberAngle<90){
-        grabberAngle++;
-      }
-      while(infraredRead){
-        Lspeed = RightBoundaryRead ? 255 : 50;
-        Rspeed = LeftBoundaryRead ?255 : 50;
-        if(!LeftBoundaryRead && !RightBoundaryRead){
-          Lspeed = Rspeed = 255;
-        }
-      // leftMotor->run(back?FORWARD:BACKWARD);
-      // rightMotor->run(back?BACKWARD:FORWARD);
-      MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
-      }
-      delay(500);
-      MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-      if(grabberAngle>30)grabberAngle--;
+      
 
       // if(!crashswitchRead && !BoxLoaded){
       //   Lspeed = Rspeed = 100;
@@ -828,8 +905,7 @@ void loop(){
       // }
       //do something
       //update target node
-      BoxLoaded = 1;
-      state = 0;
+      
       break;
     case 3://dropping && redirecting
 

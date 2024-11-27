@@ -62,7 +62,7 @@ void loop() {
   if(box_found){
 
   }
-  //if(pos1>30)pos1--;
+  if(pos1>30)pos1--;
   myservo1.write(pos1); // possibly not needed
   
 // if ((pos2 > 0) && (val == LOW)) { // lifts box 90 degrees up
