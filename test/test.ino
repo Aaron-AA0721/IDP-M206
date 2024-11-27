@@ -39,8 +39,8 @@ int RightLineBoundaryPin = 10;
 
 int Lspeed,Rspeed;
 
-// Red Button is on pin 7
-int ButtonPin = 3;
+int ButtonPin = 3;//GreenButton
+int RedButtonPin = A4;
 
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
@@ -466,7 +466,7 @@ void setup() {
   pinMode(infraredPin, INPUT);
   pinMode(MagneticPin, INPUT); // declare mag pin as input
   pinMode(crashswitchPin,INPUT);
-
+  pinMode(RedButtonPin,INPUT);
   pinMode(ButtonPin,INPUT);
   pinMode(LeftLineSensorPin, INPUT);
   pinMode(RightLineSensorPin, INPUT);
@@ -514,7 +514,7 @@ ISR(TIMER2_COMPA_vect) {
 
 int NumOfLineToPass = 0;
 int NumOfLineCounter = 0;
-
+int ToFReaings[5] = {0,1,2,3,4};
 void loop(){
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
@@ -602,21 +602,31 @@ void loop(){
       if(!LeftLineRead && !RightLineRead)reach = 1;
 
       if(CurrBox==4 && currNode == 5 && nextNode == 6){
-        if(ToFDistance > 300)inSlot = 1;
+        Serial.print("Variable_1:");
+        Serial.println(ToFDistance);
+        if(ToFDistance > 400)inSlot = 1;
         if(ToFDistance < 300)inSlot = 0;
         if(inSlot && !PickedBoxOffline){
           if(MaxTofDistance<ToFDistance)MaxTofDistance = ToFDistance;
-          if(MaxTofDistance-ToFDistance>20){
+          for(int i=0;i<4;i++)ToFReaings[i]=ToFReaings[i+1];
+          ToFReaings[4] = ToFDistance;
+          if(ToFReaings[0]>ToFReaings[1]&&ToFReaings[1]>ToFReaings[2]&&ToFReaings[2]<ToFReaings[3]&&ToFReaings[3]<ToFReaings[4] && MaxTofDistance - ToFReaings[2]>=70){
             PickBoxOffLine();
           }
         }
-      }
+      } 
+      
       if(CurrBox==5 && currNode == 1 && nextNode == 3){
-        if(ToFDistance > 300)inSlot = 1;
+        if(ToFDistance > 400)inSlot = 1;
         if(ToFDistance < 300)inSlot = 0;
         if(inSlot && !PickedBoxOffline){
           if(MaxTofDistance<ToFDistance)MaxTofDistance = ToFDistance;
-          if(MaxTofDistance-ToFDistance>20){
+          // if(MaxTofDistance-ToFDistance>20){
+          //   PickBoxOffLine();
+          // }
+          for(int i=0;i<4;i++)ToFReaings[i]=ToFReaings[i+1];
+          ToFReaings[4] = ToFDistance;
+          if(ToFReaings[0]>ToFReaings[1]&&ToFReaings[1]>ToFReaings[2]&&ToFReaings[2]<ToFReaings[3]&&ToFReaings[3]<ToFReaings[4] && MaxTofDistance - ToFReaings[2]>=70){
             PickBoxOffLine();
           }
         }
@@ -735,11 +745,11 @@ void loop(){
       
       // leftMotor->setSpeed(255);
       // rightMotor->setSpeed(255);
-      Lspeed = 255
-      Rspeed = 125;
+      Lspeed = (!turnDesPorN && !UTurn)?127:255;
+      Rspeed = (turnDesPorN && !UTurn)?127:255;
       // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
       // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
-      MotorRun((!turnDesPorN && !Uturn)?Rspeed:Lspeed,(turnDesPorN && !UTurn)?Rspeed:Lspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
+      MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
       if(buttonread){
         Serial.print(nextNode);
         Serial.println(tAngle);
