@@ -188,8 +188,9 @@ void DropBox(){
   reach = 0;
   // leftMotor->setSpeed(255);
   // rightMotor->setSpeed(255);
-  Lspeed = (!turnDesPorN && !UTurn)?127:255;
-  Rspeed = (turnDesPorN && !UTurn)?127:255;
+  bool UTurn = (tAngle-direction+4)%4 == 2;
+  Lspeed = (!turnDesPorN && !UTurn)?120:255;
+  Rspeed = (turnDesPorN && !UTurn)?120:255;
   while(1){
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
@@ -746,8 +747,8 @@ void loop(){
       
       // leftMotor->setSpeed(255);
       // rightMotor->setSpeed(255);
-      Lspeed = (!turnDesPorN && !UTurn)?127:255;
-      Rspeed = (turnDesPorN && !UTurn)?127:255;
+      Lspeed = (!turnDesPorN && !UTurn)?180:255;
+      Rspeed = (turnDesPorN && !UTurn)?180:255;
       // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
       // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
       MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
