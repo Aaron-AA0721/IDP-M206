@@ -229,7 +229,6 @@ void DropBox(){
     delay(5);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-  lifter.write(140);
   grabber.write(90);
   delay(1000);
 
@@ -289,6 +288,8 @@ void DropBox(){
     delay(10);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+  grabber.write(30);
+  delay(1000);
   //BoxPos[CurrBox] = 0;
   CurrBox++;
   BoxDelivered++;
@@ -361,10 +362,8 @@ void PickBox(){
 
       
       
-  BoxLoaded = 1;
+  //BoxLoaded = 1;
   Serial.println("Finished");
-  
-  //todo
 }
 
 
@@ -386,7 +385,7 @@ void PickBoxOffLine(){
   Serial.println("Found Box, turning");
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
   delay(500);
-  tAngle = currNode == 5?2:0;
+  tAngle = (currNode == 5)?2:0;
   bool turnDesPorN = ( (tAngle-direction)>0 ) ? ((tAngle-direction)>2?0:1) : ((tAngle-direction)<-2?1:0);
   reach = 0;
   // leftMotor->setSpeed(255);
@@ -407,26 +406,26 @@ void PickBoxOffLine(){
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
     LeftLineRead =  digitalRead(LeftLineSensorPin);
     RightLineRead =  digitalRead(RightLineSensorPin);
-    Lspeed = LeftLineRead?0:255;
-    Rspeed = RightLineRead?0:255;
+    Lspeed = LeftLineRead?0:192;
+    Rspeed = RightLineRead?0:192;
     // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
     // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
     MotorRun(Lspeed,Rspeed,turnDesPorN?FORWARD:BACKWARD,turnDesPorN?FORWARD:BACKWARD);
   }
   back = 0;
   reach = 0;
-  for(int i=0;i<100;i++){
-    Lspeed =255;
-    Rspeed =255;
+  infraredRead = digitalRead(infraredPin);
+  while(infraredRead){
+    infraredRead = digitalRead(infraredPin);
+    Lspeed = 255;
+    Rspeed = 255;
     // leftMotor->run(back?FORWARD:BACKWARD);
     // rightMotor->run(back?BACKWARD:FORWARD);
-    MotorRun(Lspeed,Rspeed,back?FORWARD:BACKWARD,back?BACKWARD:FORWARD);
-    delay(5);
+    MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-  lifter.write(140);
-  grabber.write(90);
-  delay(1000);
+  PickBox();
+  delay(500);
 
   back = 1;
   LeftLineRead =  digitalRead(LeftLineSensorPin);
@@ -706,7 +705,7 @@ void loop(){
       
       if(!LeftLineRead && !RightLineRead)reach = 1;
 
-      if(CurrBox==4 && currNode == 5 && nextNode == 6){
+      if(CurrBox==4 && currNode == 5 && nextNode == 6 && !BoxLoaded){
         Serial.print("Variable_1:");
         Serial.println(ToFDistance);
         if(ToFDistance > 400)inSlot = 1;
@@ -721,7 +720,7 @@ void loop(){
         }
       } 
       
-      if(CurrBox==5 && currNode == 1 && nextNode == 3){
+      if(CurrBox==5 && currNode == 1 && nextNode == 3 && !BoxLoaded){
         if(ToFDistance > 400)inSlot = 1;
         if(ToFDistance < 300)inSlot = 0;
         if(inSlot && !PickedBoxOffline){
