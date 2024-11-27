@@ -735,10 +735,11 @@ void loop(){
       
       // leftMotor->setSpeed(255);
       // rightMotor->setSpeed(255);
-      Lspeed = Rspeed = 255;
+      Lspeed = 255
+      Rspeed = 125;
       // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
       // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
-      MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:(UTurn?FORWARD:RELEASE),turnDesPorN?(UTurn?BACKWARD:RELEASE):FORWARD);
+      MotorRun((!turnDesPorN && !Uturn)?Rspeed:Lspeed,(turnDesPorN && !UTurn)?Rspeed:Lspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
       if(buttonread){
         Serial.print(nextNode);
         Serial.println(tAngle);
