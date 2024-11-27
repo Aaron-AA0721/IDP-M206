@@ -330,7 +330,7 @@ void PickBox(){
         Rspeed = LeftBoundaryRead ?255 : 50;
         if(!LeftBoundaryRead && !RightBoundaryRead){
           Lspeed = Rspeed = 255;
-        }
+      }
       // leftMotor->run(back?FORWARD:BACKWARD);
       // rightMotor->run(back?BACKWARD:FORWARD);
       MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
@@ -633,30 +633,36 @@ void loop(){
   //digitalWrite(RLEDPin,HIGH);
   //Serial.println(FrontLineRead);
   int buttonread = digitalRead(ButtonPin);
-  
+  Serial.println("Entering btnread");
+
+
   if(buttonread) start = 1;
-  if (Serial.available() > 0)
-    {
-      Serial.println("Serial input");
-    // read the incoming byte:
-    int incomingByte = 0;
-    incomingByte = Serial.read();
-    start = 1;
-    if(inputBytePointer<10) {
-      inputBytes[inputBytePointer] = incomingByte;
-      inputBytePointer++;
-    // say what you got:
-      Serial.print("I received: ");
-      Serial.println(incomingByte, DEC);}
-    }
+  // if (Serial.available() > 0)
+  //   {
+  //     Serial.println("Serial input");
+  //   // read the incoming byte:
+  //   int incomingByte = 0;
+  //   incomingByte = Serial.read();
+  //   start = 1;
+  //   if(inputBytePointer<10) {
+  //     inputBytes[inputBytePointer] = incomingByte;
+  //     inputBytePointer++;
+  //   // say what you got:
+  //     Serial.print("I received: ");
+  //     Serial.println(incomingByte, DEC);}
+  //   }
   nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
   if(buttonread){
     Serial.println(state);
   }
+
+
+  Serial.println("Entering switch");
   if(start && !end)
   switch(state){
     case 0://moving
       //blue_flashing(); // moving, Blue LED flashes
+      Serial.println("Entering move");
       NumOfLineCounter =0;
       //tAngle = (direction + (back?2:0))%4;
       tAngle = direction;
@@ -667,6 +673,7 @@ void loop(){
       }
       // leftMotor->run(back?FORWARD:BACKWARD);
       // rightMotor->run(back?BACKWARD:FORWARD);
+      Serial.println("Start move");
       MotorRun(Lspeed,Rspeed,back?FORWARD:BACKWARD,back?BACKWARD:FORWARD);
       // if((FrontLineRead == (edges[next][(0+tAngle)%4] != -1) && LeftLineRead == (edges[next][(3+tAngle)%4] != -1) && RightLineRead == (edges[next][(1+tAngle)%4] != -1) ) || reach){
       //   reach = 1;
@@ -806,9 +813,9 @@ void loop(){
         // rightMotor->run(RELEASE);
         PickBox();
         Serial.println("picked");
-        state = 0;
         //loop();
       }
+      Serial.println("break 0");
       break;
     case 1://rotating
       //blue_flashing(); // moving, Blue LED flashes
@@ -875,158 +882,14 @@ void loop(){
           
         }
       }
+      Serial.println("break 1");
       break;
-    case 2://picking
-      
-
-      // if(!crashswitchRead && !BoxLoaded){
-      //   Lspeed = Rspeed = 100;
-      //   MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
-      //   if(grabberAngle<90){
-      //     grabberAngle++;
-      //     grabber.write(grabberAngle);
-      //   }
-      //   else BoxLoaded = 1;
-      // }
-      // else{
-      //   BoxLoaded = 1;
-      //   if(lifterAngle >90){
-      //     lifterAngle--;
-      //     lifter.write(lifterAngle);}
-      //   else{
-      //     // targetNode = random(0,2)?10:11;
-      //     // Serial.print("new targetNode: ");
-      //     // Serial.println(targetNode);
-      //     UpdateBox(CurrBox);
-      //     DesNodeSeq[TarP+1] = random(0,2)?10:11;
-      //     for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
-      //     state = 0;
-      //   }
-      // }
-      //do something
-      //update target node
-      
-      break;
-    case 3://dropping && redirecting
-
-      //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      //this is shit I can't make it enter state 3 though the output value of variable state is correct. this part was moved into state 0 to make it work
-
-      // //digitalWrite(BLEDPin, LOW); // not moving, blue led off
-      // //do something
-      // //targetNode = search for closest waste
-      // Serial.println("hih?");//state 3 not working?
-      // if(BoxLoaded){
-      // //reach delivery area, drop
-      // //search for nearest box
-      // //update targetNode && newTargetNode
-      //   DropBox();
-      //   state = 1;
-      //   BoxLoaded = 0;
-      //   TarP = 0;
-      // }
-      // else{ //no box but finished route?
-      //   //do nothing
-      //   BoxLoaded = 1;
-      //   TarP = 0;
-      //   targetNode = random(0,2)?10:11;
-      //   Serial.print("new targetNode: ");
-      //   Serial.println(targetNode);
-      //   UpdateBox(CurrBox);
-      //   DesNodeSeq[TarP+1] = targetNode;
-      //   for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
-      //   state = 1;
-      // }
-      // break;
 
     default:
-      Serial.println("??");
+      Serial.println("state: ????????");
       break;
   }
-  /*if(inputBytes[inputBytePointer-1]==10){
-    int num = 0;
-    inputBytePointer-=2;
-    
-    switch(state){
-    case 0:
-      Serial.print("Inputing for curr: ");
-      for(int i=inputBytePointer;i>=0;i--){
-        num+= (inputBytes[i]-'0')*pow(10,inputBytePointer-i);
-      }
-      currNode = num;
-      state = 1;inputBytePointer=0;
-      Serial.println(num);
-      break;
-    case 1:
-      Serial.print("Waiting for des: ");
-      for(int i=inputBytePointer;i>=0;i--){
-        num+= (inputBytes[i]-'0')*pow(10,inputBytePointer-i);
-      }
-      targetNode = num;
-      state = 2;inputBytePointer=0;
-      Serial.println(num);
-      break;
-    case 2:
-      Serial.print("Waiting for box loaded: ");
-      for(int i=inputBytePointer;i>=0;i--){
-        num+= (inputBytes[i]-'0')*pow(10,inputBytePointer-i);
-      }
-      BoxLoaded = num%2;
-      Serial.println(num);
-      state = 0;inputBytePointer=0;
-      int next = PathFinding(currNode,targetNode);
-      Serial.println(next);
-      moveToNode(next,0);
-      turn(1);
-      break;
-    default:
-      break;
-  }
-  }*/
+  
 
 }
 
-
-
-
-/*
-void moveToNode(int node, bool back){
-  leftMotor->setSpeed(255);
-  rightMotor->setSpeed(255);
-  int tAngle = (direction+ back?2:0)%4;
-  while(FrontLineRead != (edges[node][(0+tAngle)%4] != -1) || LeftLineRead != (edges[node][(3+tAngle)%4] != -1) || RightLineRead != (edges[node][(1+tAngle)%4] != -1)){
-    leftMotor->run(back?FORWARD:BACKWARD);
-    rightMotor->run(back?BACKWARD:FORWARD);
-    LeftLineRead =  digitalRead(LeftLineSensorPin);
-    RightLineRead =  digitalRead(RightLineSensorPin);
-    FrontLineRead =  digitalRead(FrontLineSensorPin);
-    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-  }
-  leftMotor->run(RELEASE);
-  rightMotor->run(RELEASE);
-  currNode = node;
-}
-void turn(int angle){
-  leftMotor->setSpeed(255);
-  rightMotor->setSpeed(255);
-  int tAngle = (direction + angle + 4)%4;
-  bool back = angle>0;
-  while(FrontLineRead != (edges[currNode][(0+tAngle)%4] != -1) || 
-  LeftLineRead != (edges[currNode][(3+tAngle)%4] != -1) || 
-  RightLineRead != (edges[currNode][(1+tAngle)%4] != -1) ||
-  LeftBoundaryRead == 1 ||
-  RightBoundaryRead == 1
-  ){
-    leftMotor->run(back?BACKWARD:FORWARD);
-    rightMotor->run(back?BACKWARD:FORWARD);
-    LeftLineRead =  digitalRead(LeftLineSensorPin);
-    RightLineRead =  digitalRead(RightLineSensorPin);
-    FrontLineRead =  digitalRead(FrontLineSensorPin);
-    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-  }
-  leftMotor->run(RELEASE);
-  rightMotor->run(RELEASE);
-  direction = tAngle;
-}*/
