@@ -549,6 +549,7 @@ void setup() {
 
   currNode = 0;
   targetNode = DesNodeSeq[TarP];
+  nextNode = PathFinding(currNode,targetNode);
 
   Wire.begin();
   ToFSensor.begin(0x50);
@@ -653,7 +654,7 @@ void loop(){
   //     Serial.print("I received: ");
   //     Serial.println(incomingByte, DEC);}
   //   }
-  nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
+  //nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
   Serial.println(nextNode);
   if(buttonread){
     Serial.println(state);
@@ -761,6 +762,7 @@ void loop(){
         // if(currNode == 3 && nextNode == 4 && !BoxExists[5][6] && !BoxDelivered) BoxExists[5][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?4:6][UltraDistance<LongEdgeDistance?2:4] = 1;
         currNode = nextNode;
         state = 1;
+        nextNode = PathFinding(currNode,targetNode);
         Serial.print("reach ");
         Serial.print(currNode);
         Serial.print(", angle: ");
@@ -794,6 +796,7 @@ void loop(){
                 BoxLoaded = 0;
                 TarP = 0;
                 targetNode = DesNodeSeq[0];
+                nextNode = PathFinding(currNode,targetNode);
               }
               else{ //no box but finished route?
                 BoxLoaded = 1;
@@ -803,14 +806,15 @@ void loop(){
                 UpdateBox(CurrBox);
                 DesNodeSeq[TarP+1] = targetNode;
                 for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
+                nextNode = PathFinding(currNode,targetNode);
                 state = 1;
               }
             Serial.println("no target, find next");
             Serial.print("new targetNode: ");
             Serial.println(targetNode);
           }
-          }
         }
+      }
       if(!infraredRead && !BoxLoaded){
         // leftMotor->run(RELEASE);
         // rightMotor->run(RELEASE);
