@@ -135,7 +135,9 @@ int PathFinding(int curr, int des){ // set curr and des, return next node
       }
     }
     curr = nextCurr;
+    // Does reach here
   }
+  // Doesn't reach here
   while(predecessor[curr]!=initCurr){
     //Serial.print("->");
     //Serial.println(predecessor[curr]);
@@ -652,6 +654,7 @@ void loop(){
   //     Serial.println(incomingByte, DEC);}
   //   }
   nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
+  Serial.println(nextNode);
   if(buttonread){
     Serial.println(state);
   }
