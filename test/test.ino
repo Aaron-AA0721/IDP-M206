@@ -422,6 +422,27 @@ void PickBoxOffLine(){
 //     digitalWrite(BLEDPin, blueState);
 //   }
 // }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void setup() {
   Serial.begin(9600);
 
@@ -473,6 +494,24 @@ ISR(TIMER2_COMPA_vect) {
   BlueState = !BlueState;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 int NumOfLineToPass = 0;
 int NumOfLineCounter = 0;
 
@@ -562,7 +601,7 @@ void loop(){
       
       if(!LeftLineRead && !RightLineRead)reach = 1;
 
-      if(CurrBox==4 && currNode == 6 && nextNode == 5){
+      if(CurrBox==4 && currNode == 5 && nextNode == 6){
         if(ToFDistance > 300)inSlot = 1;
         if(ToFDistance < 300)inSlot = 0;
         if(inSlot && !PickedBoxOffline){
