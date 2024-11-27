@@ -14,9 +14,9 @@ Adafruit_DCMotor *leftMotor = AFMS.getMotor(1); // left Motor on port M1
 Adafruit_DCMotor *rightMotor = AFMS.getMotor(3); // right Motor on port M2
 //Adafruit_DCMotor *exMotor = AFMS.getMotor(2); // extra 18RPM motor
 
-int RLEDPin = A4; // the output pin for the Red LED
-int GLEDPin = A3; // the output pin for the Green LED
-int BLEDPin = A2; // the output pin for the Blue LED
+int RLEDPin = 4; // the output pin for the Red LED
+int GLEDPin = 6; // the output pin for the Green LED
+int BLEDPin = 5; // the output pin for the Blue LED
 
 int BlueState = 0; // stores state of Blue LED so it can flash
 
@@ -30,16 +30,17 @@ int lifterPin = 12;
 int crashswitchPin = 11;
 int MagneticPin = 10; // the input pin for the magenetic sensor
 
-int infraredPin = 9;
-int LeftLineSensorPin = 3; //the pin for line followers
-int RightLineSensorPin = 4; 
+int infraredPin = 8;
+int LeftLineSensorPin = 12; // outside pins for line followers
+int RightLineSensorPin = 9; 
 //int FrontLineSensorPin = 9;
-int LeftLineBoundaryPin = 5;
-int RightLineBoundaryPin = 6;
+int LeftLineBoundaryPin = 11; // inside pins for line followers
+int RightLineBoundaryPin = 10;
 
 int Lspeed,Rspeed;
 
-int ButtonPin = 2;
+// Red Button is on pin 7
+int ButtonPin = 3;
 
 int UltrasonicPin = A0; //the input pin of Ultrasonic Sensor
 
