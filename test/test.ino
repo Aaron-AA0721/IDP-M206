@@ -50,7 +50,7 @@ int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,99
 //                       0             1               2               3                4              5               6              7              8                  9             10             11
 bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
-int BoxPos[6] = {1,5,-1,-1,65,31};
+int BoxPos[6] = {1,5,-1,1,65,31};
 bool BoxOffLine = 0;
 //bool BoxCollected[6] = {0,0,0,0,0,0};
 int CurrBox = 3;
@@ -167,6 +167,16 @@ void BoxFinding(int cBox,int cNode){ // set curr box to picked, find des node,mi
   }
   return;
 }
+bool BoxAhead(int cBox,int cNode,int nNode){ // set curr box to picked, find des node,might be updated later but with limited boxes it seems easier to use if statements?
+  
+  if(BoxPos[cBox] < 10) {
+    return nNode == BoxPos[cBox];
+  }
+  if(BoxPos[cBox] < 100) {
+    return (cNode == BoxPos[cBox]%10 && nNode == BoxPos[cBox]/10);
+  }
+  return false;
+}
 void UpdateBox(int pickedBox){
   if(BoxPos[pickedBox] < 10) {
     BoxExists[BoxPos[0]][0] = 0;
@@ -235,6 +245,7 @@ void DropBox(){
   back = 1;
   LeftLineRead =  digitalRead(LeftLineSensorPin);
   RightLineRead =  digitalRead(RightLineSensorPin);
+  Lspeed = Rspeed = 255;
   while(!LeftLineRead || !RightLineRead){
     LeftLineRead =  digitalRead(LeftLineSensorPin);
     RightLineRead =  digitalRead(RightLineSensorPin);
@@ -249,8 +260,8 @@ void DropBox(){
     // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
     // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
     // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
-    Lspeed = (LeftLineRead&&!RightLineRead)?50:255;
-    Rspeed = (RightLineRead&&!LeftLineRead)?50:255;
+    // Lspeed = (LeftLineRead&&!RightLineRead)?50:255;
+    // Rspeed = (RightLineRead&&!LeftLineRead)?50:255;
     // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
     //   // leftMotor->setSpeed(255);
     //   // rightMotor->setSpeed(255);
@@ -259,41 +270,50 @@ void DropBox(){
     // leftMotor->run(back?FORWARD:BACKWARD);
     // rightMotor->run(back?BACKWARD:FORWARD);
     MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
-    delay(10);
   }
-  while(LeftLineRead || RightLineRead){
-    LeftLineRead =  digitalRead(LeftLineSensorPin);
-    RightLineRead =  digitalRead(RightLineSensorPin);
-    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-    // Lspeed = (((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )?50:255;
-    // Rspeed = (((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )?50:255;
-    // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
-    //   Lspeed = Rspeed = 255;
-    // }
-    // leftMotor->setSpeed((((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )||(LeftLineRead&&!RightLineRead))?50:255);
-    // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
-    // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
-    // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
-    Lspeed = (!LeftLineRead&&RightLineRead)?50:255;
-    Rspeed = (!RightLineRead&&LeftLineRead)?50:255;
-    // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
-    //   // leftMotor->setSpeed(255);
-    //   // rightMotor->setSpeed(255);
-    //   Lspeed = Rspeed = 255;
-    // }
-    // leftMotor->run(back?FORWARD:BACKWARD);
-    // rightMotor->run(back?BACKWARD:FORWARD);
-    MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
-    delay(10);
-  }
+  
+  // while(LeftLineRead || RightLineRead){
+  //   LeftLineRead =  digitalRead(LeftLineSensorPin);
+  //   RightLineRead =  digitalRead(RightLineSensorPin);
+  //   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+  //   RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+  //   // Lspeed = (((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )?50:255;
+  //   // Rspeed = (((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )?50:255;
+  //   // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+  //   //   Lspeed = Rspeed = 255;
+  //   // }
+  //   // leftMotor->setSpeed((((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )||(LeftLineRead&&!RightLineRead))?50:255);
+  //   // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
+  //   // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
+  //   // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
+  //   Lspeed = (!LeftLineRead&&RightLineRead)?50:255;
+  //   Rspeed = (!RightLineRead&&LeftLineRead)?50:255;
+  //   // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+  //   //   // leftMotor->setSpeed(255);
+  //   //   // rightMotor->setSpeed(255);
+  //   //   Lspeed = Rspeed = 255;
+  //   // }
+  //   // leftMotor->run(back?FORWARD:BACKWARD);
+  //   // rightMotor->run(back?BACKWARD:FORWARD);
+  //   MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
+  //   delay(10);
+  // }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
   grabber.write(30);
   delay(1000);
+  while(!LeftBoundaryRead || !RightBoundaryRead){
+    if(!LeftBoundaryRead && !RightBoundaryRead)break;
+    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+    Lspeed = LeftBoundaryRead?0:255;
+    Rspeed = RightBoundaryRead?0:255;
+    MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
+  }
   //BoxPos[CurrBox] = 0;
   CurrBox++;
   BoxDelivered++;
   TarP = 0;
+  BoxMagnetic = 0 ;
   PickedBoxOffline = 0;
   BoxFinding(CurrBox,currNode);
 }
@@ -322,7 +342,7 @@ void PickBox(){
         MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
         grabberAngle++;
         grabber.write(grabberAngle);
-        Serial.println(grabberAngle);
+        //Serial.println(grabberAngle);
         delay(10);
       }
       while(!infraredRead){
@@ -337,9 +357,9 @@ void PickBox(){
       // leftMotor->run(back?FORWARD:BACKWARD);
       // rightMotor->run(back?BACKWARD:FORWARD);
       MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
-      Serial.println("moving towards box");
+      //Serial.println("moving towards box");
       }
-      for(int i=0;i<40;i++){
+      for(int i=0;i<35;i++){
         LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
         RightBoundaryRead = digitalRead(RightLineBoundaryPin);
         Lspeed = RightBoundaryRead ? 255 : 50;
@@ -350,19 +370,30 @@ void PickBox(){
         MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
         delay(5);
       }
+      Lspeed = 130;
+      Rspeed = 130;
       while(grabberAngle>30){
         MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
         grabberAngle--;
         grabber.write(grabberAngle);
-        Serial.println(grabberAngle);
+        MotorRun(Lspeed,Rspeed,BACKWARD,BACKWARD);
+        //Serial.println(grabberAngle);
         if(digitalRead(MagneticPin))BoxMagnetic=1;
         delay(10);
       }
-      
+      for(int i=0;i<10;i++){
+        MotorRun(Lspeed,Rspeed,FORWARD,FORWARD);
+        delay(10);
+      }
+      for(int i=0;i<100;i++){
+        if(digitalRead(MagneticPin))BoxMagnetic=1;
+        delay(5);
+      }
 
       
       
   //BoxLoaded = 1;
+  PickedBoxOffline = 1;
   Serial.println("Finished");
 }
 
@@ -381,8 +412,16 @@ void PickBox(){
 
 
 void PickBoxOffLine(){
+  
   Serial.println(CurrBox);
   Serial.println("Found Box, turning");
+  if(CurrBox == 5){
+    for(int i=0;i<50;i++){
+      Lspeed = RightBoundaryRead ? 255 : 50;
+      Rspeed = LeftBoundaryRead ?255 : 50;
+      MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
+    }
+  }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
   delay(500);
   tAngle = (currNode == 5)?2:0;
@@ -390,42 +429,64 @@ void PickBoxOffLine(){
   reach = 0;
   // leftMotor->setSpeed(255);
   // rightMotor->setSpeed(255);
-  Lspeed = Rspeed = 255;
-  while(turnDesPorN ? !RightLineRead : !LeftLineRead){
-    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+  Lspeed  = turnDesPorN ? 100:255;
+  Rspeed = turnDesPorN ? 255:100;
+  while(!RightLineRead){
+    LeftBoundaryRead =  digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
     LeftLineRead =  digitalRead(LeftLineSensorPin);
     RightLineRead =  digitalRead(RightLineSensorPin);
     // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
     // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
+    Lspeed  = turnDesPorN ? 75:(LeftLineRead?0:255);
+    Rspeed = turnDesPorN ? (RightLineRead?0:255):75;
     MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
   }
-  delay(500);
-  while(!LeftLineRead || !RightLineRead){
-    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-    LeftLineRead =  digitalRead(LeftLineSensorPin);
-    RightLineRead =  digitalRead(RightLineSensorPin);
-    Lspeed = LeftLineRead?0:192;
-    Rspeed = RightLineRead?0:192;
-    // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
-    // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
-    MotorRun(Lspeed,Rspeed,turnDesPorN?FORWARD:BACKWARD,turnDesPorN?FORWARD:BACKWARD);
-  }
+  Serial.println("1");
+  MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+  delay(1500);
+  // while(!LeftLineRead || !RightLineRead){
+  //   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+  //   RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+  //   LeftLineRead =  digitalRead(LeftLineSensorPin);
+  //   RightLineRead =  digitalRead(RightLineSensorPin);
+  //   Lspeed = LeftLineRead?0:192;
+  //   Rspeed = RightLineRead?0:192;
+  //   // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
+  //   // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
+  //   MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
+  // }
+  // Serial.println("2");
+  //delay(1500);
   back = 0;
   reach = 0;
   infraredRead = digitalRead(infraredPin);
-  while(infraredRead){
+  for(int i=0;i<currNode == 5? 100:250;i++){
     infraredRead = digitalRead(infraredPin);
     Lspeed = 255;
     Rspeed = 255;
     // leftMotor->run(back?FORWARD:BACKWARD);
     // rightMotor->run(back?BACKWARD:FORWARD);
+    if(!infraredRead)break;
     MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-  PickBox();
-  delay(500);
+  delay(1500);
+  if(!infraredRead){PickBox();}
+  else{
+    for(int i=0;i<10;i++){
+    infraredRead = digitalRead(infraredPin);
+    Lspeed = 100;
+    Rspeed = 100;
+    // leftMotor->run(back?FORWARD:BACKWARD);
+    // rightMotor->run(back?BACKWARD:FORWARD);
+    if(!infraredRead)break;
+    MotorRun(Lspeed,Rspeed,FORWARD,FORWARD);
+    delay(5);
+  }
+  if(!infraredRead){PickBox();}
+  }
+  delay(1500);
 
   back = 1;
   LeftLineRead =  digitalRead(LeftLineSensorPin);
@@ -444,34 +505,8 @@ void PickBoxOffLine(){
     // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
     // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
     // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
-    Lspeed = (LeftLineRead&&!RightLineRead)?50:255;
-    Rspeed = (RightLineRead&&!LeftLineRead)?50:255;
-    // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
-    //   // leftMotor->setSpeed(255);
-    //   // rightMotor->setSpeed(255);
-    //   Lspeed = Rspeed = 255;
-    // }
-    // leftMotor->run(back?FORWARD:BACKWARD);
-    // rightMotor->run(back?BACKWARD:FORWARD);
-    MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
-    delay(10);
-  }
-  while(LeftLineRead || RightLineRead){
-    LeftLineRead =  digitalRead(LeftLineSensorPin);
-    RightLineRead =  digitalRead(RightLineSensorPin);
-    LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-    RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-    // Lspeed = (((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )?50:255;
-    // Rspeed = (((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )?50:255;
-    // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
-    //   Lspeed = Rspeed = 255;
-    // }
-    // leftMotor->setSpeed((((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )||(LeftLineRead&&!RightLineRead))?50:255);
-    // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
-    // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
-    // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
-    Lspeed = (!LeftLineRead&&RightLineRead)?50:255;
-    Rspeed = (!RightLineRead&&LeftLineRead)?50:255;
+    Lspeed = (LeftLineRead&&!RightLineRead)?0:255;
+    Rspeed = (RightLineRead&&!LeftLineRead)?0:255;
     // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
     //   // leftMotor->setSpeed(255);
     //   // rightMotor->setSpeed(255);
@@ -483,6 +518,36 @@ void PickBoxOffLine(){
     delay(10);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+  Serial.println("4");
+  // while(LeftLineRead || RightLineRead){
+  //   LeftLineRead =  digitalRead(LeftLineSensorPin);
+  //   RightLineRead =  digitalRead(RightLineSensorPin);
+  //   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+  //   RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+  //   // Lspeed = (((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )?50:255;
+  //   // Rspeed = (((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )?50:255;
+  //   // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+  //   //   Lspeed = Rspeed = 255;
+  //   // }
+  //   // leftMotor->setSpeed((((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )||(LeftLineRead&&!RightLineRead))?50:255);
+  //   // rightMotor->setSpeed((((!back&&!LeftBoundaryRead)||(back && RightBoundaryRead)) )||(RightLineRead&&!LeftLineRead))?50:255);
+  //   // Lspeed = ( (!back&&!RightBoundaryRead) || (back && LeftBoundaryRead) || (LeftLineRead&&!RightLineRead) )?50:255;
+  //   // Rspeed =( (!back&&!LeftBoundaryRead) || (back && RightBoundaryRead) || (RightLineRead&&!LeftLineRead) )?50:255;
+  //   Lspeed = (!LeftLineRead&&RightLineRead)?50:255;
+  //   Rspeed = (!RightLineRead&&LeftLineRead)?50:255;
+  //   // if((LeftBoundaryRead^!back)&&(RightBoundaryRead^!back)){
+  //   //   // leftMotor->setSpeed(255);
+  //   //   // rightMotor->setSpeed(255);
+  //   //   Lspeed = Rspeed = 255;
+  //   // }
+  //   // leftMotor->run(back?FORWARD:BACKWARD);
+  //   // rightMotor->run(back?BACKWARD:FORWARD);
+  //   MotorRun(Lspeed,Rspeed,FORWARD,BACKWARD);
+  //   delay(10);
+  // }
+  Serial.println("5");
+  MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+  delay(500);
   while(!LeftBoundaryRead || !RightBoundaryRead){
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
@@ -492,6 +557,8 @@ void PickBoxOffLine(){
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
   PickedBoxOffline = 1;
+  back = 0;
+  Serial.println("picked box offline");
 }
 
 
@@ -610,7 +677,24 @@ int NumOfLineToPass = 0;
 int NumOfLineCounter = 0;
 int ToFReaings[5] = {0,1,2,3,4};
 void loop(){
-  Serial.println("Entering Loop");
+  if(BoxLoaded || PickedBoxOffline){
+    if(BoxMagnetic){
+      digitalWrite(RLEDPin, HIGH);
+      digitalWrite(GLEDPin, LOW);
+    }
+    else{
+      digitalWrite(RLEDPin, LOW);
+      digitalWrite(GLEDPin, HIGH);
+    }
+  }
+  else{
+    digitalWrite(RLEDPin, LOW);
+      digitalWrite(GLEDPin, LOW);
+  }
+  // while(digitalRead(RedButtonPin)){
+  //   continue;
+  // }
+  //Serial.println("Entering Loop");
   MagRead = digitalRead(MagneticPin); // read input value
   UltraRead = analogRead(UltrasonicPin);
   UltraDistance = UltraRead * MAX_RANG / ADC_SOLUTION;
@@ -635,7 +719,7 @@ void loop(){
   //digitalWrite(RLEDPin,HIGH);
   //Serial.println(FrontLineRead);
   int buttonread = digitalRead(ButtonPin);
-  Serial.println("Entering btnread");
+  //Serial.println("Entering btnread");
 
 
   if(buttonread) start = 1;
@@ -654,18 +738,18 @@ void loop(){
   //     Serial.println(incomingByte, DEC);}
   //   }
   //nextNode = PathFinding(currNode,targetNode);//curr = current node, targetNode = final destination, next= next node to reach
-  Serial.println(nextNode);
+  //Serial.println(nextNode);
   if(buttonread){
     Serial.println(state);
   }
 
 
-  Serial.println("Entering switch");
+  //Serial.println("Entering switch");
   if(start && !end)
   switch(state){
     case 0://moving
       //blue_flashing(); // moving, Blue LED flashes
-      Serial.println("Entering move");
+      //Serial.println("Entering move");
       NumOfLineCounter =0;
       //tAngle = (direction + (back?2:0))%4;
       tAngle = direction;
@@ -676,8 +760,8 @@ void loop(){
       }
       // leftMotor->run(back?FORWARD:BACKWARD);
       // rightMotor->run(back?BACKWARD:FORWARD);
-      Serial.println("Start move");
-      MotorRun(Lspeed,Rspeed,back?FORWARD:BACKWARD,back?BACKWARD:FORWARD);
+      //Serial.println("Start move");
+      MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
       // if((FrontLineRead == (edges[next][(0+tAngle)%4] != -1) && LeftLineRead == (edges[next][(3+tAngle)%4] != -1) && RightLineRead == (edges[next][(1+tAngle)%4] != -1) ) || reach){
       //   reach = 1;
       //   if(LeftBoundaryRead && RightBoundaryRead){
@@ -705,10 +789,10 @@ void loop(){
       
       if(!LeftLineRead && !RightLineRead)reach = 1;
 
-      if(CurrBox==4 && currNode == 5 && nextNode == 6 && !BoxLoaded){
+      if(CurrBox==4 && currNode == 5 && nextNode == 6 && !BoxLoaded && !PickedBoxOffline){
         Serial.print("Variable_1:");
         Serial.println(ToFDistance);
-        if(ToFDistance > 400)inSlot = 1;
+        if(ToFDistance > 370)inSlot = 1;
         if(ToFDistance < 300)inSlot = 0;
         if(inSlot && !PickedBoxOffline){
           if(MaxTofDistance<ToFDistance)MaxTofDistance = ToFDistance;
@@ -720,9 +804,9 @@ void loop(){
         }
       } 
       
-      if(CurrBox==5 && currNode == 1 && nextNode == 3 && !BoxLoaded){
+      if(CurrBox==5 && currNode == 1 && nextNode == 3 && !BoxLoaded && !PickedBoxOffline){
         if(ToFDistance > 400)inSlot = 1;
-        if(ToFDistance < 300)inSlot = 0;
+        if(ToFDistance < 350)inSlot = 0;
         if(inSlot && !PickedBoxOffline){
           if(MaxTofDistance<ToFDistance)MaxTofDistance = ToFDistance;
           // if(MaxTofDistance-ToFDistance>20){
@@ -735,21 +819,31 @@ void loop(){
           }
         }
       }
+      if(!infraredRead && !BoxLoaded && !PickedBoxOffline){
+        // leftMotor->run(RELEASE);
+        // rightMotor->run(RELEASE);
+        if(BoxAhead(CurrBox,currNode,nextNode)){
+          PickBox();
+          Serial.println("picked");
+        }
+        
+        //loop();
+      }
       if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1)  && reach){
         //delay(100);
         reach = 0;
         // leftMotor->run(RELEASE);
         // rightMotor->run(RELEASE);
         MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-        if(currNode == 0 && nextNode == 1 && BoxPos[3]==-1 && BoxDelivered==0) {
+        if(currNode == 0 && nextNode == 1 && BoxPos[3]==-1) {
           BoxPos[3] = UltraDistance<LongEdgeDistance?13:12;
           BoxExists[1][UltraDistance<LongEdgeDistance?4:2] = BoxExists[UltraDistance<LongEdgeDistance?3:2][UltraDistance<LongEdgeDistance?2:4] = 1;
           Serial.println(UltraDistance,0);
           Serial.println("cm");
           Serial.println(UltraDistance<LongEdgeDistance?"box on 13":"box on 12");
         }
-        if(currNode == 11 && nextNode == 5 && BoxPos[2]==-1 && BoxDelivered==1) {
-          BoxPos[2] = UltraDistance<LongEdgeDistance?56:45;
+        if(currNode == 11 && nextNode == 5 && BoxPos[2]==-1 ) {
+          BoxPos[2] = UltraDistance<LongEdgeDistance?65:45;
           BoxExists[5][UltraDistance<LongEdgeDistance?2:4] = BoxExists[UltraDistance<LongEdgeDistance?6:4][UltraDistance<LongEdgeDistance?4:2] = 1;
           Serial.println(UltraDistance,0);
           Serial.println("cm");
@@ -771,6 +865,7 @@ void loop(){
           TarP++;
           if(TarP<5 && DesNodeSeq[TarP]!=-1) {
             targetNode = DesNodeSeq[TarP];
+            nextNode = PathFinding(currNode,targetNode);
             state = 1;
             Serial.print("new des ");
             Serial.println(targetNode);}
@@ -801,7 +896,6 @@ void loop(){
                 BoxLoaded = 1;
                 TarP = 0;
                 targetNode = BoxMagnetic?11:10;
-                BoxMagnetic = 0;
                 UpdateBox(CurrBox);
                 DesNodeSeq[TarP+1] = targetNode;
                 for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
@@ -814,14 +908,9 @@ void loop(){
           }
         }
       }
-      if(!infraredRead && !BoxLoaded){
-        // leftMotor->run(RELEASE);
-        // rightMotor->run(RELEASE);
-        PickBox();
-        Serial.println("picked");
-        //loop();
-      }
-      Serial.println("break 0");
+      
+      
+      //Serial.println("break 0");
       break;
     case 1://rotating
       //blue_flashing(); // moving, Blue LED flashes
@@ -855,8 +944,8 @@ void loop(){
       
       // leftMotor->setSpeed(255);
       // rightMotor->setSpeed(255);
-      Lspeed = (!turnDesPorN && !UTurn)?180:255;
-      Rspeed = (turnDesPorN && !UTurn)?180:255;
+      Lspeed = (!turnDesPorN && !UTurn)?140:255;
+      Rspeed = (turnDesPorN && !UTurn)?140:255;
       // leftMotor->run(turnDesPorN?BACKWARD:RELEASE);
       // rightMotor->run(turnDesPorN?RELEASE:FORWARD);
       MotorRun(Lspeed,Rspeed,turnDesPorN?BACKWARD:FORWARD,turnDesPorN?BACKWARD:FORWARD);
@@ -888,7 +977,7 @@ void loop(){
           
         }
       }
-      Serial.println("break 1");
+      //Serial.println("break 1");
       break;
 
     default:
