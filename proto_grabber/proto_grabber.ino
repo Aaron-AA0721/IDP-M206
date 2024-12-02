@@ -1,32 +1,48 @@
 #include <Servo.h>
 
-Servo myservo1; // grabber
-
+Servo grabber; // grabber
+Servo lifter; 
 
 int RLEDPin = 7; // the output pin for the Red LED
 int GLEDPin = 8; // the output pin for the Green LED
 
 
-int pos1 = 90; // grabber starting angle
-
-int infraredPin = 8;
-int magPin = 9;
-
+int pos1 = 10; // grabber starting angle
+int pos2 = 86;
+void Pick(){
+  while(pos1<90){
+    pos1++;
+    grabber.write(pos1);
+    delay(30);}
+  
+  
+  Serial.println("down");
+  pos2 = 89;
+  lifter.write(pos2);
+  delay(1000);
+  while(pos1>10){
+    pos1--;
+    grabber.write(pos1);
+    delay(30);}
+  Serial.println("up");
+  pos2 = 83;
+  lifter.write(pos2);
+  delay(1000);
+}
 void setup() {
-  myservo1.attach(7);
+  grabber.attach(7);
+  lifter.attach(5);
 
   Serial.begin(9600); 
-  pinMode(infraredPin, INPUT);
-  pinMode(magPin, INPUT);
-  myservo1.write(pos1); // possibly not needed
-  delay(2000);
+  grabber.write(pos1); // possibly not needed
+  lifter.write(pos2);
+  //delay(2000);
   Serial.println("start");
+  Pick();
 }
 bool ok = 0;
 void loop() {
 
-  int box_found = digitalRead(infraredPin); // read crash switch value
-  int mag = digitalRead(magPin); // read magnetic sensor
 
   // if ((pos2 > 0) && (box_held == LOW)) { // lifts box 90 degrees up
   //   pos2 -= 1;
@@ -59,11 +75,8 @@ void loop() {
   //   digitalWrite(RLEDPin, LOW);
   //   digitalWrite(GLEDPin, LOW);
   // }
-  if(box_found){
-
-  }
-  if(pos1>30)pos1--;
-  myservo1.write(pos1); // possibly not needed
+  
+  //grabber.write(pos1); // possibly not needed
   
 // if ((pos2 > 0) && (val == LOW)) { // lifts box 90 degrees up
 //     pos2 -= 1;
