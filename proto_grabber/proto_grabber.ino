@@ -7,25 +7,25 @@ int RLEDPin = 7; // the output pin for the Red LED
 int GLEDPin = 8; // the output pin for the Green LED
 
 
-int pos1 = 10; // grabber starting angle
-int pos2 = 86;
+int pos1 = 25; // grabber starting angle
+int pos2 = 105;
 void Pick(){
-  while(pos1<90){
+  while(pos1<100){
     pos1++;
     grabber.write(pos1);
     delay(30);}
   
   
   Serial.println("down");
-  pos2 = 89;
+  pos2 = 110;
   lifter.write(pos2);
   delay(1000);
-  while(pos1>10){
+  while(pos1>25){
     pos1--;
     grabber.write(pos1);
     delay(30);}
   Serial.println("up");
-  pos2 = 83;
+  pos2 = 105;
   lifter.write(pos2);
   delay(1000);
 }

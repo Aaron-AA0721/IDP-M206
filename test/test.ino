@@ -14,16 +14,18 @@ Adafruit_DCMotor *leftMotor = AFMS.getMotor(1); // left Motor on port M1
 Adafruit_DCMotor *rightMotor = AFMS.getMotor(3); // right Motor on port M2
 //Adafruit_DCMotor *exMotor = AFMS.getMotor(2); // extra 18RPM motor
 
-int RLEDPin = 4; // the output pin for the Red LED
+int RLEDPin = A3; // the output pin for the Red LED
 int GLEDPin = 6; // the output pin for the Green LED
-int BLEDPin = 5; // the output pin for the Blue LED
+int BLEDPin = A2; // the output pin for the Blue LED
 
 int BlueState = 0; // stores state of Blue LED so it can flash
 
 int grabberPin = 7; // the pin for the servos
-//int lifterPin = 12; 
+int lifterPin = 5; 
+
 //int crashswitchPin = 11;
 int MagneticPin = 2; // the input pin for the magenetic sensor
+int MagneticPin2 = 4;
 
 int infraredPin = 8;
 int LeftLineSensorPin = 12; // outside pins for line followers
@@ -45,7 +47,7 @@ int distance[12][4] = {{20,-1,-1,-1},{-1,100,20,100},{80,-1,9999,100},{80,100,99
 //                       0             1               2               3                4              5               6              7              8                  9             10             11
 bool BoxExists[12][5] = {{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{1,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0},{0,0,0,0,0}};
 //                        0            1          2         3                 4           5       6           7             8         9         10            11
-int BoxPos[6] = {1,5,-1,-1,65,31};
+int BoxPos[6] = {1,5,-1,-1,65,31}; // integer < 10 means a box at the node, integer <10 && >100 means a box on edge, if currBox>=4 Time of flight sensor will be on
 bool BoxOffLine = 0;
 //bool BoxCollected[6] = {0,0,0,0,0,0};
 int CurrBox = 0;
@@ -79,8 +81,8 @@ int crashswitchRead,infraredRead;
 //int FrontLineRead;
 int MagRead = 0; // variable for reading the pin status
 
-int grabberAngle = 30;
-
+int grabberAngle = 25;
+int lifterAngle = 105;
 bool inSlot = 0;
 float MaxTofDistance = 0;
 float InitTofDistance = 0;
@@ -242,7 +244,10 @@ void DropBox(){
     delay(5);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE); //opens the grabber to drop the box
-  grabber.write(90);
+  grabberAngle = 90;
+  grabber.write(grabberAngle);
+  lifterAngle = 115; 
+  lifter.write(lifterAngle);
   delay(1000);
 
   back = 1;
@@ -306,7 +311,10 @@ void DropBox(){
   //   delay(10);
   // }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE); // drives out backwards and closes the grabber
-  grabber.write(30);
+  grabberAngle = 25;
+  grabber.write(grabberAngle);
+  lifterAngle = 105;
+  lifter.write(lifterAngle);
   delay(1000);
   if(LeftOrRighError != 0){
     while(!LeftBoundaryRead || !RightBoundaryRead){
@@ -354,6 +362,20 @@ void PickBox(){
         //Serial.println(grabberAngle);
         delay(10);
       }
+      lifterAngle = 110;
+      lifter.write(lifterAngle);
+      delay(1000);
+      for(int i=0;i<15;i++){
+        LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
+        RightBoundaryRead = digitalRead(RightLineBoundaryPin);
+        Lspeed = RightBoundaryRead ? 255 : 50;
+        Rspeed = LeftBoundaryRead ?255 : 50;
+        if(!LeftBoundaryRead && !RightBoundaryRead){
+          Lspeed = Rspeed = 255;
+        }
+        MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
+        delay(5);
+      }
       while(!infraredRead){
         infraredRead = digitalRead(infraredPin);
         LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
@@ -368,7 +390,7 @@ void PickBox(){
       MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
       //Serial.println("moving towards box");
       }
-      for(int i=0;i<35;i++){
+      for(int i=0;i<45;i++){
         LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
         RightBoundaryRead = digitalRead(RightLineBoundaryPin);
         Lspeed = RightBoundaryRead ? 255 : 50;
@@ -379,25 +401,28 @@ void PickBox(){
         MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
         delay(5);
       }
-      Lspeed = 130;
-      Rspeed = 130;
-      while(grabberAngle>30){
-        MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+      Lspeed = 100;
+      Rspeed = 100;
+      while(grabberAngle>25){
         grabberAngle--;
         grabber.write(grabberAngle);
         MotorRun(Lspeed,Rspeed,BACKWARD,BACKWARD);
         //Serial.println(grabberAngle);
-        if(digitalRead(MagneticPin))BoxMagnetic=1;
+        if(digitalRead(MagneticPin) || digitalRead(MagneticPin2))BoxMagnetic=1;
         delay(10);
       }
+      lifterAngle = 105;
+      lifter.write(lifterAngle);
+      MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
+      delay(1000);
       Lspeed = 80;
       Rspeed = 80;
-      for(int i=0;i<7;i++){
+      for(int i=0;i<15;i++){
         MotorRun(Lspeed,Rspeed,FORWARD,FORWARD);
         delay(20);
       }
       for(int i=0;i<100;i++){
-        if(digitalRead(MagneticPin))BoxMagnetic=1;
+        if(digitalRead(MagneticPin) || digitalRead(MagneticPin2))BoxMagnetic=1;
         delay(5);
       }
 
@@ -412,7 +437,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   Serial.println(CurrBox);
   Serial.println("Found Box, turning");
   if(CurrBox == 5){
-    for(int i=0;i<50;i++){
+    for(int i=0;i<20;i++){
       Lspeed = RightBoundaryRead ? 255 : 50;
       Rspeed = LeftBoundaryRead ?255 : 50;
       MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
@@ -458,7 +483,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   reach = 0;
   // uses the infrared sensor to find when the box is close enough to pick up
   infraredRead = digitalRead(infraredPin);
-  for(int i=0;i<currNode == 5? 50:100;i++){
+  for(int i=0;i<currNode == 5? 50:75;i++){
     infraredRead = digitalRead(infraredPin); 
     Lspeed = 255;
     Rspeed = 255;
@@ -601,6 +626,7 @@ void setup() {
   pinMode(BLEDPin, OUTPUT);
   pinMode(infraredPin, INPUT);
   pinMode(MagneticPin, INPUT); // declare mag pin as input
+  pinMode(MagneticPin2, INPUT); // declare mag pin as input
   //pinMode(crashswitchPin,INPUT);
   pinMode(RedButtonPin,INPUT);
   pinMode(ButtonPin,INPUT);
@@ -611,9 +637,9 @@ void setup() {
   pinMode(RightLineBoundaryPin, INPUT);
 
   grabber.attach(grabberPin);
-  //lifter.attach(lifterPin);
+  lifter.attach(lifterPin);
   grabber.write(grabberAngle); // closes grabber so it doesn't collide with buildings
-
+  lifter.write(lifterAngle);
   if(!AFMS.begin()) {         
     if(!AFMS.begin(1000)) {
     Serial.println("Could not find Motor Shield. Check wiring.");
