@@ -91,12 +91,13 @@ float InitTofDistance = 0;
 bool PickedBoxOffline = 0;
 
 int inputBytes[10];
-int inputBytePointer = 0;
+int inputBytePointer = 0;//buffer for serial input data
+
 bool reach = 0;
 bool start = 0;
 bool end = 0;
 
-void MotorRun(int speedL,int speedR,uint8_t modeL,uint8_t modeR){ // drives the robot
+void MotorRun(int speedL,int speedR,uint8_t modeL,uint8_t modeR){ // drives the robot, updates the blue light accordingly
   leftMotor->setSpeed(speedL);
   rightMotor->setSpeed(speedR);
   leftMotor->run(modeL);
@@ -105,7 +106,7 @@ void MotorRun(int speedL,int speedR,uint8_t modeL,uint8_t modeR){ // drives the 
   else digitalWrite(BLEDPin, BlueState?HIGH:LOW); // moving, blue led on
 }
 
-int PathFinding(int curr, int des){ // set current and destination, return next node
+int PathFinding(int curr, int des){ // set current and destination, return next node, Dijkstra's algorithm
   for(int i=0;i<12;i++){
     nodeTraveled[i]=0;
     disFromCurr[i]=1e9;
@@ -125,7 +126,7 @@ int PathFinding(int curr, int des){ // set current and destination, return next 
       index = IndexInArray(i,curr);
       if(!nodeTraveled[i]){
         if(index!=-1){
-          if(disFromCurr[i]>disFromCurr[curr]+distance[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){
+          if(disFromCurr[i]>disFromCurr[curr]+distance[curr][index] && (!BoxLoaded || (!BoxExists[curr][index+1] && !BoxExists[i][0]))){//if box loaded, edge/node with boxes will not be available
             disFromCurr[i]=disFromCurr[curr]+distance[curr][index];
             predecessor[i]=curr;
           }
@@ -150,6 +151,7 @@ int PathFinding(int curr, int des){ // set current and destination, return next 
 
 // finds closest box
 void BoxFinding(int cBox,int cNode){ // set current box to picked, find destination node,might be updated later but with limited boxes it seems easier to use if statements?
+//could do another Dijkstra again, but as 6 boxes are fixed at nodes/ on edges, there is no need to do that
   while(BoxPos[cBox] == -1 && cBox<6){cBox++;BoxDelivered++;}
   if(cBox == 6){
     DesNodeSeq[0] = 0;
@@ -170,8 +172,8 @@ void BoxFinding(int cBox,int cNode){ // set current box to picked, find destinat
   return;
 }
 
-// unclear what these do
-bool BoxAhead(int cBox,int cNode,int nNode){ // set curr box to picked, find des node,might be updated later but with limited boxes it seems easier to use if statements?
+// if true, there should be a box ahead, if there should not be according to the box locations stores, PickBox() will not be called by infrared sensor signals
+bool BoxAhead(int cBox,int cNode,int nNode){ 
   if(BoxPos[cBox] < 10) {
     return nNode == BoxPos[cBox];
   }
@@ -180,7 +182,7 @@ bool BoxAhead(int cBox,int cNode,int nNode){ // set curr box to picked, find des
   }
   return false;
 }
-
+//after picking boxes, update box position array
 void UpdateBox(int pickedBox){
   if(BoxPos[pickedBox] < 10) {
     BoxExists[BoxPos[0]][0] = 0;
@@ -232,7 +234,7 @@ void DropBox(){
   }
   back = 0;
   reach = 0;
-  int distanceD = 150 - BoxDropped[currNode == 10?0:1]*35;
+  int distanceD = 140 - BoxDropped[currNode == 10?0:1]*30;
   if(distanceD<60) distanceD = 60;
   for(int i=0;i< distanceD;i++){
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
@@ -248,11 +250,14 @@ void DropBox(){
     delay(5);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE); //opens the grabber to drop the box
+  lifterAngle = 95; 
+  lifter.write(lifterAngle);
   grabberAngle = 90;
   grabber.write(grabberAngle);
+  delay(300);
   lifterAngle = 115; 
   lifter.write(lifterAngle);
-  delay(1000);
+  delay(300);
 
   back = 1;
   LeftLineRead =  digitalRead(LeftLineSensorPin);
@@ -319,7 +324,7 @@ void DropBox(){
   grabber.write(grabberAngle);
   lifterAngle = 105;
   lifter.write(lifterAngle);
-  delay(1000);
+  delay(500);
   // if(LeftOrRighError != 0){
   //   while(!LeftBoundaryRead || !RightBoundaryRead){
   //   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
@@ -336,6 +341,7 @@ void DropBox(){
   TarP = 0;
   BoxMagnetic = 0 ;
   PickedBoxOffline = 0;
+  BoxDropped[currNode == 10?0:1]++;
   BoxFinding(CurrBox,currNode);
 }
 
@@ -364,7 +370,7 @@ void PickBox(){
         grabberAngle++;
         grabber.write(grabberAngle);
         //Serial.println(grabberAngle);
-        delay(10);
+        delay(5);
       }
       lifterAngle = 110;
       lifter.write(lifterAngle);
@@ -445,7 +451,7 @@ void PickBox(){
 
 
 
-
+bool OfflineFound = 0;
 
 void PickBoxOffLine(){ // called when the offline boxes are sensed
   Serial.println(CurrBox);
@@ -480,7 +486,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   }
   Serial.println("1");
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-  delay(700);
+  delay(300);
   /* while(!LeftLineRead || !RightLineRead){
      LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
      RightBoundaryRead = digitalRead(RightLineBoundaryPin);
@@ -498,7 +504,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   reach = 0;
   // uses the infrared sensor to find when the box is close enough to pick up
   infraredRead = digitalRead(infraredPin);
-  for(int i=0;i < (currNode == 5 ? 50:70) ;i++){
+  for(int i=0;i < (currNode == 5 ? 45:72) ;i++){
     infraredRead = digitalRead(infraredPin); 
     Lspeed = 255;
     Rspeed = 255;
@@ -510,44 +516,47 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   }
 
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
-  delay(700);
+  delay(300);
   int infCounter = 0;
   if(!infraredRead){
     PickBox();
+    OfflineFound = 1;
   }
   else{
     
-    for(int i=0;i<30;i++){
+    for(int i=0;i<70;i++){
       infraredRead = digitalRead(infraredPin);
-      Lspeed = 100;
-      Rspeed = 100;
+      Lspeed = 180;
+      Rspeed = 180;
       // leftMotor->run(back?FORWARD:BACKWARD);
       // rightMotor->run(back?BACKWARD:FORWARD);
       if(!infraredRead)infCounter++;
-      if(infCounter>2)break;
+      if(infCounter>5)break;
       MotorRun(Lspeed,Rspeed,BACKWARD,BACKWARD);
       delay(10);
     }
     MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
     if(!infraredRead){
       PickBox();
+      OfflineFound = 1;
     }
     else{
       infCounter = 0;
-      for(int i=0;i<30;i++){
+      for(int i=0;i<130;i++){
       infraredRead = digitalRead(infraredPin);
-      Lspeed = 100;
-      Rspeed = 100;
+      Lspeed = 180;
+      Rspeed = 180;
       // leftMotor->run(back?FORWARD:BACKWARD);
       // rightMotor->run(back?BACKWARD:FORWARD);
       if(!infraredRead)infCounter++;
-      if(infCounter>2)break;
+      if(infCounter>5)break;
       MotorRun(Lspeed,Rspeed,FORWARD,FORWARD);
       delay(10);
       }
       MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
       if(!infraredRead){
         PickBox();
+        OfflineFound = 1;
       }
     }
     
@@ -824,8 +833,8 @@ void loop(){
         Serial.println((edges[nextNode][(1+tAngle)%4]));
       } */
       
-      if(!LeftLineRead && !RightLineRead)reach = 1;
-
+      if(!LeftLineRead && !RightLineRead && !reach)reach = 1;
+      if(reach)turncounter++;
       // if traveling from node 5 to 6 look for the box off the line
       if(CurrBox==4 && currNode == 5 && nextNode == 6 && !BoxLoaded && !PickedBoxOffline){
         if(InitTofDistance == 0)InitTofDistance = ToFDistance;
@@ -879,7 +888,10 @@ void loop(){
       if(BoxMagnetic && targetNode == 10){
         targetNode = 11;
       }
-      if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1)  && reach){
+      if(LeftBoundaryRead == (edges[nextNode][(0+tAngle)%4] != -1) && RightBoundaryRead== (edges[nextNode][(0+tAngle)%4] != -1) && LeftLineRead == (edges[nextNode][(3+tAngle)%4] != -1) && RightLineRead == (edges[nextNode][(1+tAngle)%4] != -1)  && reach && turncounter>50){
+        Serial.print("counter: ");
+        Serial.println(turncounter);
+        turncounter = 0;
         //delay(100);
         reach = 0;
         InitTofDistance = 0;
@@ -941,7 +953,7 @@ void loop(){
               // search for nearest box
               // update targetNode && newTargetNode
               DropBox();
-              BoxDropped[currNode == 10?0:1]++;
+              
               state = 1;
               Serial.print(LeftBoundaryRead);
               Serial.print(RightBoundaryRead);
@@ -956,11 +968,22 @@ void loop(){
               BoxLoaded = 1;
               TarP = 0;
               targetNode = BoxMagnetic?11:10;
-              UpdateBox(CurrBox);
-              DesNodeSeq[TarP+1] = targetNode;
-              for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
-              nextNode = PathFinding(currNode,targetNode);
-              state = 1;
+              if(CurrBox>3 && !OfflineFound && false){//not used, no enough time for fixing the  function of skipping boxes
+                CurrBox++;
+                BoxFinding(CurrBox,currNode);
+                BoxLoaded = 0;
+                TarP = 0;
+                targetNode = DesNodeSeq[0];
+                nextNode = PathFinding(currNode,targetNode);
+              }
+              else{
+                UpdateBox(CurrBox);
+                DesNodeSeq[TarP+1] = targetNode;
+                for(int i=1;i<5;i++)DesNodeSeq[i] = -1;
+                nextNode = PathFinding(currNode,targetNode);
+                state = 1;
+              }
+              
             }
             Serial.println("no target, find next");
             Serial.print("new targetNode: ");
