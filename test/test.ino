@@ -63,7 +63,7 @@ int predecessor[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 bool BoxLoaded = 0;
 bool BoxMagnetic = 0;
 bool BoxSensed = 0;
-int BoxDelivered = 0;
+int BoxDelivered = 0;//number of box delivered
 
 int currNode = 0;
 int targetNode = 8;
@@ -182,7 +182,7 @@ bool BoxAhead(int cBox,int cNode,int nNode){
   }
   return false;
 }
-//after picking boxes, update box position array
+//after picking boxes, update box position array && for the map
 void UpdateBox(int pickedBox){
   if(BoxPos[pickedBox] < 10) {
     BoxExists[BoxPos[0]][0] = 0;
@@ -194,14 +194,14 @@ void UpdateBox(int pickedBox){
     return;
   }
 }
-
+//find the index in neighber array of curr node
 int IndexInArray(int goal, int curr){
   for(int i=0;i<4;i++){
     if(goal == edges[curr][i])return i;
   }
   return -1;
 }
-
+//function of dropping boxes after reaching stations
 void DropBox(){
   int LeftOrRighError = 0;
   tAngle = currNode == 10?2:3;
@@ -234,9 +234,11 @@ void DropBox(){
   }
   back = 0;
   reach = 0;
-  int distanceD = 140 - BoxDropped[currNode == 10?0:1]*30;
+  //turn 90 degrees
+
+  int distanceD = 140 - BoxDropped[currNode == 10?0:1]*30;//distance shorten for each drop to avoid collision
   if(distanceD<60) distanceD = 60;
-  for(int i=0;i< distanceD;i++){
+  for(int i=0;i< distanceD;i++){//move forward
     LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
     RightBoundaryRead = digitalRead(RightLineBoundaryPin);
     Lspeed = (((!back&&!RightBoundaryRead)||(back && LeftBoundaryRead)) )?50:255;
@@ -250,7 +252,7 @@ void DropBox(){
     delay(5);
   }
   MotorRun(Lspeed,Rspeed,RELEASE,RELEASE); //opens the grabber to drop the box
-  lifterAngle = 95; 
+  lifterAngle = 95; //lift up open scoop and drop
   lifter.write(lifterAngle);
   grabberAngle = 90;
   grabber.write(grabberAngle);
@@ -258,7 +260,7 @@ void DropBox(){
   lifterAngle = 115; 
   lifter.write(lifterAngle);
   delay(300);
-
+  //move backwards until on line
   back = 1;
   LeftLineRead =  digitalRead(LeftLineSensorPin);
   RightLineRead =  digitalRead(RightLineSensorPin);
@@ -336,7 +338,7 @@ void DropBox(){
   // }
   
   //BoxPos[CurrBox] = 0;
-  CurrBox++;
+  CurrBox++;//update curr box to pick up and number of boxes delivered, claer status
   BoxDelivered++;
   TarP = 0;
   BoxMagnetic = 0 ;
@@ -360,12 +362,10 @@ void DropBox(){
 
 
 
-
+//function of picking boxes
 void PickBox(){
-  //digitalWrite(BLEDPin, LOW); // not moving, blue led off
       
-      
-      while(grabberAngle<90){
+      while(grabberAngle<90){//open
         MotorRun(Lspeed,Rspeed,RELEASE,RELEASE);
         grabberAngle++;
         grabber.write(grabberAngle);
@@ -374,20 +374,10 @@ void PickBox(){
       }
       lifterAngle = 110;
       lifter.write(lifterAngle);
-      //delay(1000);
-      // for(int i=0;i<15;i++){
-      //   LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
-      //   RightBoundaryRead = digitalRead(RightLineBoundaryPin);
-      //   Lspeed = RightBoundaryRead ? 255 : 50;
-      //   Rspeed = LeftBoundaryRead ?255 : 50;
-      //   if(!LeftBoundaryRead && !RightBoundaryRead){
-      //     Lspeed = Rspeed = 255;
-      //   }
-      //   MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
-      //   delay(5);
-      // }
+
+      
       int counterI = 0;
-      while(!infraredRead){
+      while(!infraredRead){//move until infrared no sensing ->box in picking range
         counterI++;
         if(counterI>300)break;
         Serial.println(counterI);
@@ -404,7 +394,7 @@ void PickBox(){
       MotorRun(Lspeed,Rspeed,BACKWARD,FORWARD);
       //Serial.println("moving towards box");
       }
-      for(int i=0;i<35;i++){
+      for(int i=0;i<35;i++){//move forward a bit
         LeftBoundaryRead = digitalRead(LeftLineBoundaryPin);
         RightBoundaryRead = digitalRead(RightLineBoundaryPin);
         Lspeed = RightBoundaryRead ? 255 : 50;
@@ -416,7 +406,7 @@ void PickBox(){
         delay(5);
       }
       Lspeed = 110;
-      Rspeed = 110;
+      Rspeed = 110;//pick up
       while(grabberAngle>25){
         grabberAngle--;
         grabber.write(grabberAngle);
@@ -471,7 +461,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   reach = 0;
   // leftMotor->setSpeed(255);
   // rightMotor->setSpeed(255);
-  Lspeed  = turnDesPorN ? 85:255;
+  Lspeed  = turnDesPorN ? 85:255;//turn right
   Rspeed = turnDesPorN ? 255:85;
   while(!RightLineRead){
     LeftBoundaryRead =  digitalRead(LeftLineBoundaryPin);
@@ -504,7 +494,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   reach = 0;
   // uses the infrared sensor to find when the box is close enough to pick up
   infraredRead = digitalRead(infraredPin);
-  for(int i=0;i < (currNode == 5 ? 45:72) ;i++){
+  for(int i=0;i < (currNode == 5 ? 45:72) ;i++){//move a small distance until infrared sensed
     infraredRead = digitalRead(infraredPin); 
     Lspeed = 255;
     Rspeed = 255;
@@ -525,7 +515,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
   else{
     
     for(int i=0;i<70;i++){
-      infraredRead = digitalRead(infraredPin);
+      infraredRead = digitalRead(infraredPin);//rotate right a bit until sensed
       Lspeed = 180;
       Rspeed = 180;
       // leftMotor->run(back?FORWARD:BACKWARD);
@@ -542,7 +532,7 @@ void PickBoxOffLine(){ // called when the offline boxes are sensed
     }
     else{
       infCounter = 0;
-      for(int i=0;i<130;i++){
+      for(int i=0;i<130;i++){//rotate left a bit until sensed
       infraredRead = digitalRead(infraredPin);
       Lspeed = 180;
       Rspeed = 180;
